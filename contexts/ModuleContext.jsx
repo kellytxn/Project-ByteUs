@@ -1,7 +1,7 @@
-import { createContext, useEffect, useState } from "react";
-import { databases } from "../lib/appwrite";
-import { ID, Permission, Query, Role } from "react-native-appwrite";
-import { useUser } from "../hooks/useUser";
+import { createContext, useEffect, useState } from "react"
+import { databases } from "../lib/appwrite"
+import { ID, Permission, Query, Role } from "react-native-appwrite"
+import { useUser } from "../hooks/useUser"
 
 const DATABASE_ID = '6829990f0023ed9f3a30'
 const COLLECTION_ID = '68299950001cf658da6a'

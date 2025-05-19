@@ -378,5 +378,5 @@ const styles = StyleSheet.create({
   strikethroughText: {
     textDecorationLine: 'line-through',
     color: '#999',
-  },
+  }
 })
