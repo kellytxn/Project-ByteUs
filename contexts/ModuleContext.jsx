@@ -60,6 +60,18 @@ export function ModuleProvider({ children }) {
     }
     async function deleteModule(id) {
         try {
+            await databases.deleteDocument(DATABASE_ID, COLLECTION_ID, id)
+            await fetchModule()
+
+        } catch (error) {
+            console.error(error.message)
+
+        }
+    }
+    async function editModule(id, updatedData) {
+        try {
+            await databases.updateDocument(DATABASE_ID, COLLECTION_ID, id, updatedData)
+            await fetchModule()
 
         } catch (error) {
             console.error(error.message)
@@ -77,7 +89,7 @@ export function ModuleProvider({ children }) {
     }, [user])
     return (
         <ModuleContext.Provider
-            value={{module, fetchModule, fetchModuleById, createModule, deleteModule}}
+            value={{module, fetchModule, fetchModuleById, createModule, deleteModule, editModule}}
             >
                 {children}
         </ModuleContext.Provider>
