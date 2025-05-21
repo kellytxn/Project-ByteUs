@@ -64,7 +64,6 @@ const Track = () => {
     setLoading(true);
 
     if (editingModuleId) {
-      // Edit mode
       await editModule(editingModuleId, {
         code,
         name,
@@ -74,7 +73,6 @@ const Track = () => {
         grade: gradeNumber,
       });
     } else {
-      // Create mode
       await createModule({
         code,
         name,
@@ -300,153 +298,157 @@ const Track = () => {
             </>
           )}
 
-          <SectionList
-            sections={groupedModules}
-            keyExtractor={(item) => item.$id}
-            contentContainerStyle={styles.listContainer}
-            renderSectionHeader={({ section: { title } }) => (
-              <Text style={styles.header}>{title}</Text>
-            )}
-            renderItem={({ item }) => (
-              <View
-                style={[
-                  styles.card,
-                  {
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  },
-                ]}
-              >
-                <View>
-                  <Text
-                    style={[
-                      styles.code,
-                      item.completed && styles.strikethroughText,
-                    ]}
-                  >
-                    {item.code}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.name,
-                      item.completed && styles.strikethroughText,
-                    ]}
-                  >
-                    {item.name}
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={() => onEditModule(item)}
-                  style={({ pressed }) => [
+          {module.length > 0 && (
+            <SectionList
+              sections={groupedModules}
+              keyExtractor={(item) => item.$id}
+              contentContainerStyle={styles.listContainer}
+              renderSectionHeader={({ section: { title } }) => (
+                <Text style={styles.header}>{title}</Text>
+              )}
+              renderItem={({ item }) => (
+                <View
+                  style={[
+                    styles.card,
                     {
-                      backgroundColor: "#D2D4DB",
-                      paddingVertical: 6,
-                      paddingHorizontal: 12,
-                      borderRadius: 8,
-                      opacity: pressed ? 0.7 : 1,
-                    },
-                  ]}
-                >
-                  <Text style={{ color: "white", fontWeight: "600" }}>
-                    Edit
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-          />
-          <View style={{ marginTop: -25, width: "90.5%" }}>
-            <Text style={styles.header}>GPA calculator</Text>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Search module name / code"
-              value={searchText}
-              onChangeText={setSearchText}
-            />
-            {searchText.trim().length > 0 && (
-              <View style={{ marginTop: 10 }}>
-                {filteredModules
-                  .filter(
-                    (m) => !selectedModules.some((sel) => sel.$id === m.$id)
-                  )
-                  .map((mod) => (
-                    <Pressable
-                      key={mod.$id}
-                      onPress={() => {
-                        setSelectedModules((prev) => [...prev, mod]);
-                        setSearchText("");
-                      }}
-                      style={{
-                        backgroundColor: "#fff",
-                        padding: 12,
-                        borderRadius: 8,
-                        marginBottom: 8,
-                        borderColor: "#ccc",
-                        borderWidth: 1,
-                      }}
-                    >
-                      <Text style={{ fontWeight: "bold" }}>
-                        {mod.code} - {mod.name}
-                      </Text>
-                    </Pressable>
-                  ))}
-              </View>
-            )}
-            {selectedModules.length > 0 && (
-              <View style={{ marginTop: 10, marginBottom: 10 }}>
-                <Text style={styles.code}>Currently selected</Text>
-                {selectedModules.map((mod) => (
-                  <View
-                    key={mod.$id}
-                    style={{
-                      backgroundColor: "#DFE7EC",
-                      padding: 10,
-                      borderRadius: 8,
-                      marginBottom: 10,
-                      borderColor: "#ccc",
-                      borderWidth: 1,
                       flexDirection: "row",
                       justifyContent: "space-between",
                       alignItems: "center",
-                    }}
-                  >
-                    <View style={{ flexShrink: 1 }}>
-                      <Text style={{ fontWeight: "bold" }}>
-                        {mod.code} - {mod.name}
-                      </Text>
-                    </View>
-                    <Pressable
-                      onPress={() =>
-                        setSelectedModules((prev) =>
-                          prev.filter((m) => m.$id !== mod.$id)
-                        )
-                      }
-                      style={{
+                    },
+                  ]}
+                >
+                  <View>
+                    <Text
+                      style={[
+                        styles.code,
+                        item.completed && styles.strikethroughText,
+                      ]}
+                    >
+                      {item.code}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.name,
+                        item.completed && styles.strikethroughText,
+                      ]}
+                    >
+                      {item.name}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => onEditModule(item)}
+                    style={({ pressed }) => [
+                      {
                         backgroundColor: "#D2D4DB",
                         paddingVertical: 6,
                         paddingHorizontal: 12,
-                        borderRadius: 6,
-                        marginLeft: 10,
+                        borderRadius: 8,
+                        opacity: pressed ? 0.7 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={{ color: "white", fontWeight: "600" }}>
+                      Edit
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+            />
+          )}
+          {module.length > 0 && (
+            <View style={styles.gpaContainer}>
+              <Text style={styles.header}>GPA calculator</Text>
+
+              <TextInput
+                style={styles.input}
+                placeholder="Search module name / code"
+                value={searchText}
+                onChangeText={setSearchText}
+              />
+              {searchText.trim().length > 0 && (
+                <View style={{ marginTop: 10 }}>
+                  {filteredModules
+                    .filter(
+                      (m) => !selectedModules.some((sel) => sel.$id === m.$id)
+                    )
+                    .map((mod) => (
+                      <Pressable
+                        key={mod.$id}
+                        onPress={() => {
+                          setSelectedModules((prev) => [...prev, mod]);
+                          setSearchText("");
+                        }}
+                        style={{
+                          backgroundColor: "#fff",
+                          padding: 12,
+                          borderRadius: 8,
+                          marginBottom: 8,
+                          borderColor: "#ccc",
+                          borderWidth: 1,
+                        }}
+                      >
+                        <Text style={{ fontWeight: "bold" }}>
+                          {mod.code} - {mod.name}
+                        </Text>
+                      </Pressable>
+                    ))}
+                </View>
+              )}
+              {selectedModules.length > 0 && (
+                <View style={{ marginTop: 10, marginBottom: 10 }}>
+                  <Text style={styles.code}>Currently selected</Text>
+                  {selectedModules.map((mod) => (
+                    <View
+                      key={mod.$id}
+                      style={{
+                        backgroundColor: "#E2EDF4",
+                        padding: 10,
+                        borderRadius: 8,
+                        marginBottom: 10,
+                        borderColor: "#ccc",
+                        borderWidth: 1,
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
                       }}
                     >
-                      <Text style={{ color: "white", fontWeight: "600" }}>
-                        Remove
-                      </Text>
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            )}
+                      <View style={{ flexShrink: 1 }}>
+                        <Text style={{ fontWeight: "bold" }}>
+                          {mod.code} - {mod.name}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() =>
+                          setSelectedModules((prev) =>
+                            prev.filter((m) => m.$id !== mod.$id)
+                          )
+                        }
+                        style={{
+                          backgroundColor: "#D2D4DB",
+                          paddingVertical: 6,
+                          paddingHorizontal: 12,
+                          borderRadius: 6,
+                          marginLeft: 10,
+                        }}
+                      >
+                        <Text style={{ color: "white", fontWeight: "600" }}>
+                          Remove
+                        </Text>
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              )}
 
-            {selectedModules.length > 0 && (
-              <View style={{ marginTop: 20, alignItems: "center" }}>
-                <Text style={{ fontWeight: "bold", fontSize: 18 }}>
-                  GPA: {calculateGPA()}
-                </Text>
-              </View>
-            )}
-          </View>
+              {selectedModules.length > 0 && (
+                <View style={{ marginTop: 20, alignItems: "center" }}>
+                  <Text style={{ fontWeight: "bold", fontSize: 18 }}>
+                    GPA: {calculateGPA()}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
       </TouchableWithoutFeedback>
     </ScrollView>
@@ -537,5 +539,18 @@ const styles = StyleSheet.create({
   strikethroughText: {
     textDecorationLine: "line-through",
     color: "#999",
+  },
+  gpaContainer: {
+    marginTop: 30,
+    width: "100%",
+    backgroundColor: "#EBE5E5",
+    borderRadius: 15,
+    padding: 25,
+    marginBottom: 50,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 5,
   },
 });
