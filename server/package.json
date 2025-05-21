@@ -1,0 +1,31 @@
+{
+  "name": "project-byteus",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --env-file=.env index.js",
+    "dev": "node --watch --trace-warnings --env-file=.env index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kellytxn/Project-ByteUs.git"
+  },
+  "author": "yq",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kellytxn/Project-ByteUs/issues"
+  },
+  "homepage": "https://github.com/kellytxn/Project-ByteUs#readme",
+  "description": "",
+  "dependencies": {
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "joi": "^17.13.3",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.15.0",
+    "nodemailer": "^7.0.3"
+  }
+}
