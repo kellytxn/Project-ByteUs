@@ -20,7 +20,7 @@ const Home = () => {
         const token = await AsyncStorage.getItem("token");
 
         if (token) {
-          router.replace("/(dashboard)/home");
+          router.replace("/home");
         } else {
           setIsLoading(false);
         }

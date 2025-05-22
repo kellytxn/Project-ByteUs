@@ -34,7 +34,6 @@ const Login = () => {
         if (res.data.status === "ok") {
           console.log("Login successful, navigating to /home");
           AsyncStorage.setItem("token", res.data.data);
-          AsyncStorage.setItem("isLoggedIn", JSON.stringify(true));
           router.replace("/home");
         } else {
           setError(res.data.data || "Invalid email or password");

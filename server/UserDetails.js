@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const UserDetailSchema = new mongoose.Schema(
+const UserDetailsSchema = new mongoose.Schema(
   {
     name: String,
     course: String,
@@ -8,8 +8,22 @@ const UserDetailSchema = new mongoose.Schema(
     semester: Number,
     email: { type: String, unique: true },
     password: String,
+    modules: {
+      type: [
+        {
+          code: String,
+          name: String,
+          category: String,
+          units: Number,
+          completed: Boolean,
+          grade: String,
+        },
+      ],
+      required: false,
+      default: [],
+    },
   },
   {}
 );
 
-mongoose.model("UserInfo", UserDetailSchema);
+mongoose.model("UserInfo", UserDetailsSchema);

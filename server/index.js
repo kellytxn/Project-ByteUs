@@ -10,12 +10,17 @@ const jwt = require("jsonwebtoken");
 
 const mongoUrl =
   "mongodb+srv://kellytttan:T0513663b@cluster0.2vbexus.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+
 const JWT_SECRET = "234tychsbdc76euwy3456uytfvbnjjgfe45t6yujhj";
+
 mongoose.connect(mongoUrl).then(() => {
   console.log("Database connected");
 });
+
 require("./UserDetails");
+
 const User = mongoose.model("UserInfo");
+
 app.use(cors());
 app.use(helmet());
 app.use(cookieParser());
@@ -81,6 +86,30 @@ app.post("/userData", async (req, res) => {
       return res.send({ status: "ok", data: data });
     });
   } catch (error) {}
+});
+
+app.post("/createModule", async (req, res) => {
+  const { token, module } = req.body;
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const email = decoded.email;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).send({ status: "error", data: "User not found" });
+    }
+
+    user.modules.push(module);
+    await user.save();
+
+    return res
+      .status(200)
+      .send({ status: "ok", data: "Module added successfully" });
+  } catch (error) {
+    console.error("Error adding module:", error);
+    return res
+      .status(500)
+      .send({ status: "error", data: "Failed to add module" });
+  }
 });
 
 const PORT = process.env.PORT || 5001;
