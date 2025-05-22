@@ -401,7 +401,7 @@ const Track = () => {
                     <View
                       key={mod.$id}
                       style={{
-                        backgroundColor: "#E2EDF4",
+                        backgroundColor: "rgba(178, 203, 219, 0.6)",
                         padding: 10,
                         borderRadius: 8,
                         marginBottom: 10,
