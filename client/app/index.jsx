@@ -1,7 +1,49 @@
-import { StyleSheet, Text, View, Image, Pressable } from "react-native";
-import { Link } from "expo-router";
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
+import { Link, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useState } from "react";
 
 const Home = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkToken = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+
+        if (token) {
+          router.replace("/(dashboard)/home");
+        } else {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Error reading token from AsyncStorage:", error);
+        setIsLoading(false);
+      }
+    };
+
+    checkToken();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#AE96C7" />
+        <Text style={{ marginTop: 10, color: "#555" }}>
+          Checking login status...
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Image source={require("../assets/Logo.png")} style={styles.logo} />
@@ -31,6 +73,12 @@ export default Home;
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#EBE9E3",
+  },
+  loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -37,7 +37,6 @@ const Register = () => {
     };
 
     try {
-      // Step 1: Register user
       const registerRes = await axios.post(
         "http://192.168.1.109:5001/register",
         userData
@@ -48,7 +47,6 @@ const Register = () => {
         return;
       }
 
-      // Step 2: Login immediately
       const loginRes = await axios.post("http://192.168.1.109:5001/login", {
         email,
         password,

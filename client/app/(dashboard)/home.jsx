@@ -12,6 +12,7 @@ const Home = () => {
   async function getData() {
     try {
       const token = await AsyncStorage.getItem("token");
+
       if (!token) {
         setError("No token found.");
         return;
@@ -20,6 +21,7 @@ const Home = () => {
       const res = await axios.post("http://192.168.1.109:5001/userData", {
         token,
       });
+
       setUserData(res.data.data);
     } catch (err) {
       setError("Failed to fetch user data.");
@@ -28,7 +30,7 @@ const Home = () => {
 
   async function handleLogout() {
     await AsyncStorage.removeItem("token");
-    router.replace("/login"); // Redirect to login page
+    router.replace("/login");
   }
 
   useEffect(() => {

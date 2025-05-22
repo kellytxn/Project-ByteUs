@@ -26,6 +26,7 @@ const Login = () => {
       email: email,
       password: password,
     };
+
     axios
       .post("http://192.168.1.109:5001/login", userData)
       .then((res) => {
@@ -33,6 +34,7 @@ const Login = () => {
         if (res.data.status === "ok") {
           console.log("Login successful, navigating to /home");
           AsyncStorage.setItem("token", res.data.data);
+          AsyncStorage.setItem("isLoggedIn", JSON.stringify(true));
           router.replace("/home");
         } else {
           setError(res.data.data || "Invalid email or password");
