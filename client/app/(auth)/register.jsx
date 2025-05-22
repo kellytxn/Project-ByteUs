@@ -6,13 +6,12 @@ import {
   TextInput,
   Pressable,
   View,
-  Image,
-  Alert,
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
-import { Link } from "expo-router";
-import { useUser } from "../../hooks/useUser";
+import { Link, useRouter } from "expo-router";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Register = () => {
   const [fullName, setFullName] = useState("");
@@ -23,14 +22,48 @@ const Register = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
 
-  const { register } = useUser();
+  const router = useRouter();
 
   const handleRegister = async () => {
     setError(null);
+
+    const userData = {
+      name: fullName,
+      course: course,
+      year: year,
+      semester: semester,
+      email: email,
+      password: password,
+    };
+
     try {
-      await register(fullName, course, year, semester, email, password);
-    } catch (error) {
-      setError(error.message);
+      // Step 1: Register user
+      const registerRes = await axios.post(
+        "http://192.168.1.109:5001/register",
+        userData
+      );
+
+      if (registerRes.data.status !== "ok") {
+        setError(registerRes.data.data || "Registration failed");
+        return;
+      }
+
+      // Step 2: Login immediately
+      const loginRes = await axios.post("http://192.168.1.109:5001/login", {
+        email,
+        password,
+      });
+
+      if (loginRes.data.status === "ok") {
+        const token = loginRes.data.data;
+        await AsyncStorage.setItem("token", token);
+        router.replace("/home");
+      } else {
+        setError("Login failed after registration");
+      }
+    } catch (err) {
+      console.log(err);
+      setError("Something went wrong. Please try again.");
     }
   };
 

@@ -1,19 +1,56 @@
 import { StyleSheet, Text, View, Pressable } from "react-native";
-import React from "react";
-import { useUser } from "../../hooks/useUser";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 
 const Home = () => {
-  const { logout, user } = useUser();
+  const [userData, setUserData] = useState(null);
+  const [error, setError] = useState(null);
+  const router = useRouter();
+
+  async function getData() {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        setError("No token found.");
+        return;
+      }
+
+      const res = await axios.post("http://192.168.1.109:5001/userData", {
+        token,
+      });
+      setUserData(res.data.data);
+    } catch (err) {
+      setError("Failed to fetch user data.");
+    }
+  }
+
+  async function handleLogout() {
+    await AsyncStorage.removeItem("token");
+    router.replace("/login"); // Redirect to login page
+  }
+
+  useEffect(() => {
+    getData();
+  }, []);
+
   return (
     <View style={styles.container}>
-      <Text>{user.email}</Text>
-      <Text>profile</Text>
-      <Pressable
-        onPress={logout}
-        style={({ pressed }) => [styles.button, pressed && styles.pressed]}
-      >
-        <Text style={styles.buttonText}>Logout</Text>
-      </Pressable>
+      {error ? (
+        <Text style={{ color: "red" }}>{error}</Text>
+      ) : userData ? (
+        <>
+          <Text>Welcome, {userData.name}</Text>
+          <Text>{userData.email}</Text>
+
+          <Pressable onPress={handleLogout} style={styles.button}>
+            <Text style={styles.buttonText}>Logout</Text>
+          </Pressable>
+        </>
+      ) : (
+        <Text>Loading...</Text>
+      )}
     </View>
   );
 };
@@ -33,7 +70,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     paddingHorizontal: 40,
     borderRadius: 12,
-    marginTop: 10,
+    marginTop: 20,
   },
   buttonText: {
     color: "white",

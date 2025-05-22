@@ -22,13 +22,6 @@ const Home = () => {
             </Pressable>
           </Link>
         </View>
-        <View style={styles.box}>
-          <Link href="/home" asChild>
-            <Pressable>
-              <Text style={styles.linkText}>Home</Text>
-            </Pressable>
-          </Link>
-        </View>
       </View>
     </View>
   );

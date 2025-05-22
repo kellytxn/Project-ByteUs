@@ -9,23 +9,42 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
 } from "react-native";
-import { Link } from "expo-router";
-import { useUser } from "../../hooks/useUser";
+import { Link, useRouter } from "expo-router";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
 
-  const { login } = useUser();
+  const router = useRouter();
 
   const handleLogin = async () => {
     setError(null);
-    try {
-      await login(email, password);
-    } catch (error) {
-      setError(error.message);
-    }
+    const userData = {
+      email: email,
+      password: password,
+    };
+    axios
+      .post("http://192.168.1.109:5001/login", userData)
+      .then((res) => {
+        console.log(res.data);
+        if (res.data.status === "ok") {
+          console.log("Login successful, navigating to /home");
+          AsyncStorage.setItem("token", res.data.data);
+          router.replace("/home");
+        } else {
+          setError(res.data.data || "Invalid email or password");
+        }
+      })
+      .catch((error) => {
+        if (error.response && error.response.data) {
+          setError(error.response.data.data || "Invalid email or password");
+        } else {
+          setError(error.message);
+        }
+      });
   };
 
   return (
