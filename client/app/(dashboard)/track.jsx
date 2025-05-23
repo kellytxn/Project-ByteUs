@@ -11,6 +11,7 @@ import {
   Pressable,
   Alert,
   Switch,
+  ActivityIndicator,
 } from "react-native";
 import { useState, useEffect } from "react";
 import { PieChart } from "react-native-chart-kit";
@@ -31,12 +32,15 @@ const Track = () => {
   const [showInputs, setShowInputs] = useState(false);
   const [module, setModule] = useState([]);
   const [editingModuleId, setEditingModuleId] = useState(null);
+  const [isFetching, setIsFetching] = useState(false);
 
   useEffect(() => {
     const fetchModules = async () => {
+      setIsFetching(true);
       const token = await AsyncStorage.getItem("token");
       if (!token) {
         console.error("No token found");
+        setIsFetching(false);
         return;
       }
 
@@ -57,6 +61,8 @@ const Track = () => {
         }
       } catch (err) {
         console.error("Error fetching modules:", err);
+      } finally {
+        setIsFetching(false);
       }
     };
 
@@ -209,205 +215,221 @@ const Track = () => {
     <ScrollView style={styles.container}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.content}>
-          <Pressable
-            onPress={() => setShowInputs((prev) => !prev)}
-            style={({ pressed }) => [
-              styles.button,
-              pressed && styles.pressed,
-              { alignSelf: "flex-end", marginTop: 20 },
-            ]}
-          >
-            <Text style={styles.buttonText}>{showInputs ? "-" : "+"}</Text>
-          </Pressable>
-
-          {totalUnits > 0 && (
-            <View
-              style={{
-                alignItems: "center",
-                justifyContent: "center",
-                position: "relative",
-                height: 300,
-              }}
-            >
-              <PieChart
-                data={chartData}
-                width={screenWidth}
-                height={300}
-                chartConfig={{
-                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                }}
-                accessor={"population"}
-                backgroundColor={"transparent"}
-                center={[screenWidth / 2 - 110, 0]}
-                hasLegend={false}
-                absolute
-              />
-              <View
-                style={{
-                  position: "absolute",
-                  width: 150,
-                  height: 150,
-                  borderRadius: 75,
-                  backgroundColor: "#EBE9E3",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text style={{ fontWeight: "bold", fontSize: 16 }}>
-                  {completedUnits}/{totalUnits} MCs
-                </Text>
-                <Text style={{ fontWeight: "bold", fontSize: 16 }}>
-                  completed
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {showInputs && (
+          {isFetching ? (
             <>
-              <Text style={styles.label}>Module code</Text>
-              <TextInput
-                style={styles.input}
-                value={code}
-                onChangeText={setCode}
-                placeholder="Enter your module code"
-              />
-
-              <Text style={styles.label}>Module name</Text>
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Enter your module name"
-              />
-
-              <Text style={styles.label}>Category</Text>
-              <TextInput
-                style={styles.input}
-                value={category}
-                onChangeText={setCategory}
-                placeholder="Enter the category of the module"
-              />
-
-              <Text style={styles.label}>Modular Credit</Text>
-              <TextInput
-                style={styles.input}
-                value={units}
-                onChangeText={setUnits}
-                placeholder="Enter the MCs"
-                keyboardType="numeric"
-              />
-
-              <Text style={styles.label}>Completed?</Text>
               <View
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginBottom: 20,
-                  alignSelf: "flex-start",
+                  flex: 1,
+                  marginTop: 440,
                 }}
               >
-                <Switch
-                  value={completed}
-                  onValueChange={(val) => {
-                    setCompleted(val);
-                    if (!val) setGrade("NA");
-                  }}
-                  trackColor={{ false: "#ccc", true: "#DFB6CF" }}
-                  thumbColor={"#f4f3f4"}
-                />
-                <Text style={{ marginLeft: 10, fontSize: 14 }}>
-                  {completed ? "Yes" : "No"}
-                </Text>
+                <ActivityIndicator size="large" color="#AE96C7" />
+                <Text style={{ marginTop: 10, color: "#555" }}>Loading...</Text>
               </View>
+            </>
+          ) : (
+            <>
+              <Pressable
+                onPress={() => setShowInputs((prev) => !prev)}
+                style={({ pressed }) => [
+                  styles.button,
+                  pressed && styles.pressed,
+                  { alignSelf: "flex-end", marginTop: 20 },
+                ]}
+              >
+                <Text style={styles.buttonText}>{showInputs ? "-" : "+"}</Text>
+              </Pressable>
 
-              {completed && (
+              {totalUnits > 0 && (
+                <View
+                  style={{
+                    alignItems: "center",
+                    justifyContent: "center",
+                    position: "relative",
+                    height: 300,
+                  }}
+                >
+                  <PieChart
+                    data={chartData}
+                    width={screenWidth}
+                    height={300}
+                    chartConfig={{
+                      color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                    }}
+                    accessor={"population"}
+                    backgroundColor={"transparent"}
+                    center={[screenWidth / 2 - 110, 0]}
+                    hasLegend={false}
+                    absolute
+                  />
+                  <View
+                    style={{
+                      position: "absolute",
+                      width: 150,
+                      height: 150,
+                      borderRadius: 75,
+                      backgroundColor: "#EBE9E3",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ fontWeight: "bold", fontSize: 16 }}>
+                      {completedUnits}/{totalUnits} MCs
+                    </Text>
+                    <Text style={{ fontWeight: "bold", fontSize: 16 }}>
+                      completed
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {showInputs && (
                 <>
-                  <Text style={styles.label}>Final Grade</Text>
+                  <Text style={styles.label}>Module code</Text>
                   <TextInput
                     style={styles.input}
-                    value={grade}
-                    onChangeText={setGrade}
-                    placeholder="Enter your grade"
+                    value={code}
+                    onChangeText={setCode}
+                    placeholder="Enter your module code"
                   />
+
+                  <Text style={styles.label}>Module name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={name}
+                    onChangeText={setName}
+                    placeholder="Enter your module name"
+                  />
+
+                  <Text style={styles.label}>Category</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={category}
+                    onChangeText={setCategory}
+                    placeholder="Enter the category of the module"
+                  />
+
+                  <Text style={styles.label}>Modular Credit</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={units}
+                    onChangeText={setUnits}
+                    placeholder="Enter the MCs"
+                    keyboardType="numeric"
+                  />
+
+                  <Text style={styles.label}>Completed?</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      marginBottom: 20,
+                      alignSelf: "flex-start",
+                    }}
+                  >
+                    <Switch
+                      value={completed}
+                      onValueChange={(val) => {
+                        setCompleted(val);
+                        if (!val) setGrade("NA");
+                      }}
+                      trackColor={{ false: "#ccc", true: "#DFB6CF" }}
+                      thumbColor={"#f4f3f4"}
+                    />
+                    <Text style={{ marginLeft: 10, fontSize: 14 }}>
+                      {completed ? "Yes" : "No"}
+                    </Text>
+                  </View>
+
+                  {completed && (
+                    <>
+                      <Text style={styles.label}>Final Grade</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={grade}
+                        onChangeText={setGrade}
+                        placeholder="Enter your grade"
+                      />
+                    </>
+                  )}
+
+                  <View style={styles.buttonRow}>
+                    <Pressable
+                      onPress={handleSave}
+                      disabled={loading}
+                      style={({ pressed }) => [
+                        styles.button,
+                        pressed && styles.pressed,
+                        { flex: 1, marginRight: 10 },
+                      ]}
+                    >
+                      <Text style={styles.buttonText}>
+                        {loading
+                          ? "Saving..."
+                          : editingModuleId
+                          ? "Save"
+                          : "Create"}
+                      </Text>
+                    </Pressable>
+
+                    {editingModuleId && (
+                      <Pressable
+                        onPress={handleDelete}
+                        style={({ pressed }) => [
+                          styles.deleteButton,
+                          pressed && styles.pressed,
+                          { flex: 1 },
+                        ]}
+                      >
+                        <Text style={styles.buttonText}>Delete</Text>
+                      </Pressable>
+                    )}
+                  </View>
                 </>
               )}
 
-              <View style={styles.buttonRow}>
-                <Pressable
-                  onPress={handleSave}
-                  disabled={loading}
-                  style={({ pressed }) => [
-                    styles.button,
-                    pressed && styles.pressed,
-                    { flex: 1, marginRight: 10 },
-                  ]}
-                >
-                  <Text style={styles.buttonText}>
-                    {loading
-                      ? "Saving..."
-                      : editingModuleId
-                      ? "Save"
-                      : "Create"}
-                  </Text>
-                </Pressable>
-
-                {editingModuleId && (
-                  <Pressable
-                    onPress={handleDelete}
-                    style={({ pressed }) => [
-                      styles.deleteButton,
-                      pressed && styles.pressed,
-                      { flex: 1 },
-                    ]}
-                  >
-                    <Text style={styles.buttonText}>Delete</Text>
-                  </Pressable>
-                )}
-              </View>
+              {module.length > 0 && (
+                <SectionList
+                  sections={groupedModules}
+                  keyExtractor={(item) => item.$id}
+                  contentContainerStyle={styles.listContainer}
+                  renderSectionHeader={({ section: { title } }) => (
+                    <Text style={styles.header}>{title}</Text>
+                  )}
+                  renderItem={({ item }) => (
+                    <View style={styles.cardRow}>
+                      <View>
+                        <Text
+                          style={[
+                            styles.code,
+                            item.completed && styles.strikethroughText,
+                          ]}
+                        >
+                          {item.code}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.name,
+                            item.completed && styles.strikethroughText,
+                          ]}
+                        >
+                          {item.name}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() => handleEdit(item)}
+                        style={({ pressed }) => [
+                          styles.editButton,
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <Text style={styles.editButtonText}>Edit</Text>
+                      </Pressable>
+                    </View>
+                  )}
+                />
+              )}
             </>
-          )}
-
-          {module.length > 0 && (
-            <SectionList
-              sections={groupedModules}
-              keyExtractor={(item) => item.$id}
-              contentContainerStyle={styles.listContainer}
-              renderSectionHeader={({ section: { title } }) => (
-                <Text style={styles.header}>{title}</Text>
-              )}
-              renderItem={({ item }) => (
-                <View style={styles.cardRow}>
-                  <View>
-                    <Text
-                      style={[
-                        styles.code,
-                        item.completed && styles.strikethroughText,
-                      ]}
-                    >
-                      {item.code}
-                    </Text>
-                    <Text
-                      style={[
-                        styles.name,
-                        item.completed && styles.strikethroughText,
-                      ]}
-                    >
-                      {item.name}
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={() => handleEdit(item)}
-                    style={({ pressed }) => [
-                      styles.editButton,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <Text style={styles.editButtonText}>Edit</Text>
-                  </Pressable>
-                </View>
-              )}
-            />
           )}
         </View>
       </TouchableWithoutFeedback>

@@ -40,7 +40,7 @@ const Home = () => {
 
   async function handleLogout() {
     await AsyncStorage.removeItem("token");
-    router.replace("/login");
+    router.replace("/");
   }
 
   useEffect(() => {

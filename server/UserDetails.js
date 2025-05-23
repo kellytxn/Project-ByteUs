@@ -1,6 +1,5 @@
 const mongoose = require("mongoose");
 
-// Define the subschema for a single module
 const ModuleSchema = new mongoose.Schema(
   {
     code: String,
@@ -10,10 +9,9 @@ const ModuleSchema = new mongoose.Schema(
     completed: Boolean,
     grade: String,
   },
-  { _id: true } // Ensures each module gets its own _id
+  { _id: true }
 );
 
-// Define the main user schema with all fields required except modules
 const UserDetailsSchema = new mongoose.Schema({
   name: { type: String, required: true },
   course: { type: String, required: true },
@@ -24,7 +22,7 @@ const UserDetailsSchema = new mongoose.Schema({
   modules: {
     type: [ModuleSchema],
     default: [],
-    required: false, // explicitly not required
+    required: false,
   },
 });
 
