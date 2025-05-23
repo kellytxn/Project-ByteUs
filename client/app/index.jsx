@@ -6,7 +6,7 @@ import {
   Pressable,
   ActivityIndicator,
 } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 
@@ -50,19 +50,15 @@ const Home = () => {
 
       <View style={styles.linkContainer}>
         <View style={styles.box}>
-          <Link href="/login" asChild>
-            <Pressable>
-              <Text style={styles.linkText}>Login</Text>
-            </Pressable>
-          </Link>
+          <Pressable onPress={() => router.push("/login")}>
+            <Text style={styles.linkText}>Login</Text>
+          </Pressable>
         </View>
 
         <View style={styles.box}>
-          <Link href="/register" asChild>
-            <Pressable>
-              <Text style={styles.linkText}>Register</Text>
-            </Pressable>
-          </Link>
+          <Pressable onPress={() => router.push("/register")}>
+            <Text style={styles.linkText}>Register</Text>
+          </Pressable>
         </View>
       </View>
     </View>

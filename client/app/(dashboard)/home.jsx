@@ -1,4 +1,10 @@
-import { StyleSheet, Text, View, Pressable } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  View,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -7,6 +13,7 @@ import { useRouter } from "expo-router";
 const Home = () => {
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   async function getData() {
@@ -15,6 +22,7 @@ const Home = () => {
 
       if (!token) {
         setError("No token found.");
+        setIsLoading(false);
         return;
       }
 
@@ -25,6 +33,8 @@ const Home = () => {
       setUserData(res.data.data);
     } catch (err) {
       setError("Failed to fetch user data.");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -39,20 +49,23 @@ const Home = () => {
 
   return (
     <View style={styles.container}>
-      {error ? (
+      {isLoading ? (
+        <>
+          <ActivityIndicator size="large" color="#AE96C7" />
+          <Text style={{ marginTop: 10, color: "#555" }}>Loading...</Text>
+        </>
+      ) : error ? (
         <Text style={{ color: "red" }}>{error}</Text>
       ) : userData ? (
         <>
-          <Text>Welcome, {userData.name}</Text>
-          <Text>{userData.email}</Text>
+          <Text style={styles.welcomeText}>Welcome, {userData.name}</Text>
+          <Text style={styles.emailText}>{userData.email}</Text>
 
           <Pressable onPress={handleLogout} style={styles.button}>
             <Text style={styles.buttonText}>Logout</Text>
           </Pressable>
         </>
-      ) : (
-        <Text>Loading...</Text>
-      )}
+      ) : null}
     </View>
   );
 };
@@ -66,6 +79,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     justifyContent: "center",
     alignItems: "center",
+  },
+  welcomeText: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 8,
+  },
+  emailText: {
+    fontSize: 16,
+    marginBottom: 20,
   },
   button: {
     backgroundColor: "#AE96C7",
