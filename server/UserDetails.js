@@ -18,7 +18,7 @@ const UserDetailsSchema = new mongoose.Schema({
   year: { type: Number, required: true },
   semester: { type: Number, required: true },
   email: { type: String, unique: true, required: true },
-  password: { type: String, required: true },
+  password: { type: String, required: true, select: false },
   modules: {
     type: [ModuleSchema],
     default: [],
