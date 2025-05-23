@@ -12,8 +12,7 @@ import {
   Alert,
   Switch,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PieChart } from "react-native-chart-kit";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -31,8 +30,38 @@ const Track = () => {
   const [loading, setLoading] = useState(false);
   const [showInputs, setShowInputs] = useState(false);
   const [module, setModule] = useState([]);
+  const [editingModuleId, setEditingModuleId] = useState(null);
 
-  const router = useRouter();
+  useEffect(() => {
+    const fetchModules = async () => {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        console.error("No token found");
+        return;
+      }
+
+      try {
+        const res = await axios.post("http://192.168.1.109:5001/getModules", {
+          token,
+        });
+        if (res.data.status === "ok") {
+          const modulesWithId = res.data.data.map((m) => ({
+            ...m,
+            $id: uuid.v4(),
+            _id: m._id,
+          }));
+
+          setModule(modulesWithId);
+        } else {
+          console.error("Failed to fetch modules:", res.data.data);
+        }
+      } catch (err) {
+        console.error("Error fetching modules:", err);
+      }
+    };
+
+    fetchModules();
+  }, []);
 
   const clearForm = () => {
     setCode("");
@@ -41,52 +70,104 @@ const Track = () => {
     setUnits("");
     setCompleted(false);
     setGrade("");
+    setEditingModuleId(null);
+  };
+
+  const handleEdit = (module) => {
+    setCode(module.code);
+    setName(module.name);
+    setCategory(module.category);
+    setUnits(module.units.toString());
+    setCompleted(module.completed);
+    setGrade(module.completed ? module.grade : "NA");
+    setEditingModuleId(module._id);
+    setShowInputs(true);
   };
 
   const handleSave = async () => {
-    if (!code.trim() || !name.trim() || !category.trim() || !units.trim()) {
-      Alert.alert("Incomplete form", "Please fill in all fields.");
+    if (!code || !name || !category || !units) {
+      Alert.alert("Please fill all fields");
       return;
     }
-
-    const unitsNumber = parseInt(units);
-    if (isNaN(unitsNumber)) {
-      Alert.alert("Invalid input", "Units must be a number.");
+    const unitsNum = Number(units);
+    if (isNaN(unitsNum)) {
+      Alert.alert("Units must be a number");
       return;
     }
-
-    const trimmedGrade = completed ? grade.trim() : "NA";
-
-    const userData = {
-      code: code.trim().toUpperCase(),
-      name: name.trim(),
-      category: category.trim(),
-      units: unitsNumber,
+    const newModule = {
+      code,
+      name,
+      category,
+      units: unitsNum,
       completed,
-      grade: trimmedGrade,
+      grade: completed ? grade : "NA",
     };
 
     setLoading(true);
-
     try {
       const token = await AsyncStorage.getItem("token");
-      if (!token) {
-        console.error("No token found in AsyncStorage");
-        return;
-      }
-      const response = await axios.post(
-        "http://192.168.1.109:5001/createModule",
-        { token, userData }
-      );
+      if (!token) throw new Error("No token found");
 
-      setModule((prev) => [...prev, { ...userData, $id: uuid.v4() }]);
+      if (editingModuleId) {
+        await axios.post("http://192.168.1.109:5001/updateModule", {
+          token,
+          moduleId: editingModuleId,
+          updatedData: newModule,
+        });
+        setModule((prev) =>
+          prev.map((m) =>
+            m._id === editingModuleId ? { ...m, ...newModule } : m
+          )
+        );
+      } else {
+        const res = await axios.post("http://192.168.1.109:5001/createModule", {
+          token,
+          module: newModule,
+        });
+        setModule((prev) => [
+          ...prev,
+          { ...newModule, _id: res.data.id, $id: uuid.v4() },
+        ]);
+      }
       clearForm();
+      setShowInputs(false);
     } catch (error) {
-      console.error("Error saving module:", error);
+      Alert.alert("Error saving module", error.message);
     } finally {
       setLoading(false);
-      setShowInputs(false);
     }
+  };
+
+  const handleDelete = () => {
+    if (!editingModuleId) return;
+    Alert.alert(
+      "Delete module?",
+      "Are you sure you want to delete this module?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem("token");
+              if (!token) throw new Error("No token found");
+              await axios.post("http://192.168.1.109:5001/deleteModule", {
+                token,
+                moduleId: editingModuleId,
+              });
+              setModule((prev) =>
+                prev.filter((m) => m._id !== editingModuleId)
+              );
+              clearForm();
+              setShowInputs(false);
+            } catch (error) {
+              Alert.alert("Error deleting module", error.message);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const totalUnits = module.reduce((sum, m) => sum + (m.units || 0), 0);
@@ -252,18 +333,38 @@ const Track = () => {
                 </>
               )}
 
-              <Pressable
-                onPress={handleSave}
-                disabled={loading}
-                style={({ pressed }) => [
-                  styles.button,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Text style={styles.buttonText}>
-                  {loading ? "Saving…" : "Create"}
-                </Text>
-              </Pressable>
+              <View style={styles.buttonRow}>
+                <Pressable
+                  onPress={handleSave}
+                  disabled={loading}
+                  style={({ pressed }) => [
+                    styles.button,
+                    pressed && styles.pressed,
+                    { flex: 1, marginRight: 10 },
+                  ]}
+                >
+                  <Text style={styles.buttonText}>
+                    {loading
+                      ? "Saving..."
+                      : editingModuleId
+                      ? "Save"
+                      : "Create"}
+                  </Text>
+                </Pressable>
+
+                {editingModuleId && (
+                  <Pressable
+                    onPress={handleDelete}
+                    style={({ pressed }) => [
+                      styles.deleteButton,
+                      pressed && styles.pressed,
+                      { flex: 1 },
+                    ]}
+                  >
+                    <Text style={styles.buttonText}>Delete</Text>
+                  </Pressable>
+                )}
+              </View>
             </>
           )}
 
@@ -295,6 +396,15 @@ const Track = () => {
                       {item.name}
                     </Text>
                   </View>
+                  <Pressable
+                    onPress={() => handleEdit(item)}
+                    style={({ pressed }) => [
+                      styles.editButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={styles.editButtonText}>Edit</Text>
+                  </Pressable>
                 </View>
               )}
             />
@@ -338,6 +448,13 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: "#DFB6CF",
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  deleteButton: {
+    backgroundColor: "#D3D4D8",
     paddingVertical: 10,
     paddingHorizontal: 30,
     borderRadius: 12,
@@ -391,5 +508,21 @@ const styles = StyleSheet.create({
   strikethroughText: {
     textDecorationLine: "line-through",
     color: "#999",
+  },
+  editButton: {
+    backgroundColor: "#D3D4D8",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  editButtonText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
   },
 });
