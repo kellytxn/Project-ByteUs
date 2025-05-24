@@ -33,6 +33,8 @@ const Track = () => {
   const [module, setModule] = useState([]);
   const [editingModuleId, setEditingModuleId] = useState(null);
   const [isFetching, setIsFetching] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [selectedModules, setSelectedModules] = useState([]);
 
   useEffect(() => {
     const fetchModules = async () => {
@@ -210,6 +212,61 @@ const Track = () => {
     title,
     data: data.sort((a, b) => a.completed - b.completed),
   }));
+
+  const availableModules = module.filter(
+    (m) =>
+      m.completed &&
+      m.grade &&
+      m.grade.toUpperCase() !== "CS" &&
+      m.grade.toUpperCase() !== "CU"
+  );
+
+  const filteredModules = availableModules.filter(
+    (m) =>
+      (m.code.toLowerCase().includes(searchText.toLowerCase()) ||
+        m.name.toLowerCase().includes(searchText.toLowerCase())) &&
+      !selectedModules.some((selected) => selected._id === m._id)
+  );
+
+  const gradePointsMap = {
+    "A+": 5,
+    A: 5,
+    "A-": 4.5,
+    "B+": 4,
+    B: 3.5,
+    "B-": 3,
+    "C+": 2.5,
+    C: 2,
+    "D+": 1.5,
+    D: 1,
+    F: 0,
+  };
+
+  const calculateGPA = () => {
+    if (selectedModules.length === 0) return 0;
+    let totalPoints = 0;
+    let totalUnits = 0;
+
+    selectedModules.forEach((mod) => {
+      const points = gradePointsMap[mod.grade.toUpperCase()] ?? 0;
+      totalPoints += points * mod.units;
+      totalUnits += mod.units;
+    });
+
+    return totalUnits === 0 ? 0 : (totalPoints / totalUnits).toFixed(2);
+  };
+
+  const toggleModuleSelection = (mod) => {
+    if (selectedModules.some((m) => m._id === mod._id)) {
+      setSelectedModules((prev) => prev.filter((m) => m._id !== mod._id));
+    } else {
+      setSelectedModules((prev) => [...prev, mod]);
+    }
+  };
+
+  const removeSelectedModule = (moduleId) => {
+    setSelectedModules((prev) => prev.filter((mod) => mod._id !== moduleId));
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -429,6 +486,125 @@ const Track = () => {
                   )}
                 />
               )}
+
+              <View style={styles.gpaBox}>
+                <Text style={[styles.header, { marginTop: 0 }]}>
+                  GPA Calculator
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Search by module code or name"
+                  value={searchText}
+                  onChangeText={setSearchText}
+                />
+
+                {searchText.trim() !== "" && filteredModules.length > 0 ? (
+                  <ScrollView
+                    style={{
+                      maxHeight: 150,
+                      marginTop: 0,
+                      borderWidth: 1,
+                      borderColor: "#fff",
+                      borderRadius: 12,
+                      backgroundColor: "#fff",
+                    }}
+                  >
+                    {filteredModules.length > 0 &&
+                      filteredModules.map((mod) => {
+                        const selected = selectedModules.some(
+                          (m) => m._id === mod._id
+                        );
+                        return (
+                          <Pressable
+                            key={mod._id}
+                            onPress={() => toggleModuleSelection(mod)}
+                            style={{
+                              padding: 10,
+                              backgroundColor: selected ? "#DFB6CF" : "white",
+                              borderBottomWidth: 1,
+                              borderBottomColor: "#eee",
+                            }}
+                          >
+                            <Text style={{ fontWeight: "bold" }}>
+                              {mod.code} - {mod.name}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
+                  </ScrollView>
+                ) : null}
+
+                {selectedModules.length > 0 && (
+                  <>
+                    <Text
+                      style={[styles.header, { marginTop: 0, marginBottom: 0 }]}
+                    >
+                      Selected:
+                    </Text>
+                    <ScrollView
+                      style={{
+                        maxHeight: 150,
+                        borderWidth: 1,
+                        borderColor: "#EBE5E5",
+                        borderRadius: 12,
+                        backgroundColor: "#EBE5E5",
+                        marginTop: 5,
+                        paddingVertical: 5,
+                      }}
+                    >
+                      {selectedModules.map((mod) => (
+                        <View
+                          key={mod._id}
+                          style={{
+                            padding: 10,
+                            backgroundColor: "rgba(178, 203, 219, 0.6)",
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            borderRadius: 8,
+                            marginBottom: 15,
+                          }}
+                        >
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontWeight: "bold" }}>
+                              {mod.code} - {mod.name}
+                            </Text>
+                            <Text>
+                              Grade: {mod.grade} | MCs: {mod.units}
+                            </Text>
+                          </View>
+                          <Pressable
+                            onPress={() => removeSelectedModule(mod._id)}
+                            style={({ pressed }) => [
+                              {
+                                backgroundColor: "#D3D4D8",
+                                paddingVertical: 6,
+                                paddingHorizontal: 12,
+                                borderRadius: 8,
+                              },
+                              pressed && { opacity: 0.8 },
+                            ]}
+                          >
+                            <Text
+                              style={{ color: "white", fontWeight: "bold" }}
+                            >
+                              Remove
+                            </Text>
+                          </Pressable>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </>
+                )}
+
+                <View style={{ marginTop: 10, alignItems: "center" }}>
+                  {selectedModules.length > 0 && (
+                    <Text style={{ fontWeight: "bold", fontSize: 16 }}>
+                      GPA: {calculateGPA()}
+                    </Text>
+                  )}
+                </View>
+              </View>
             </>
           )}
         </View>
@@ -546,5 +722,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     width: "100%",
+  },
+  gpaBox: {
+    width: "100%",
+    backgroundColor: "#EBE5E5",
+    borderColor: "#EBE5E5",
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });
