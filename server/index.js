@@ -75,7 +75,7 @@ app.post("/login", async (req, res) => {
       .json({ status: "error", data: "Email and password are required" });
   }
 
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ email }).select("+password");
   if (!user) {
     return res
       .status(400)
