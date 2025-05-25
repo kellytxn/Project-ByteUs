@@ -8,11 +8,13 @@ import {
   View,
   TouchableWithoutFeedback,
   Keyboard,
+  Platform,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BACKEND_URL } from "../../config";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 const Register = () => {
   const [fullName, setFullName] = useState("");
@@ -64,78 +66,89 @@ const Register = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.content}>
-          <Text style={styles.label}>Full Name</Text>
-          <TextInput
-            style={styles.input}
-            value={fullName}
-            onChangeText={setFullName}
-            placeholder="Enter your full name"
-          />
+    <KeyboardAwareScrollView
+      extraScrollHeight={100}
+      enableOnAndroid={Platform.OS === "android"}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.container}
+      style={{ backgroundColor: "#EBE9E3" }}
+    >
+      <ScrollView style={styles.container}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.content}>
+            <Text style={styles.label}>Full Name</Text>
+            <TextInput
+              style={styles.input}
+              value={fullName}
+              onChangeText={setFullName}
+              placeholder="Enter your full name"
+            />
 
-          <Text style={styles.label}>Course</Text>
-          <TextInput
-            style={styles.input}
-            value={course}
-            onChangeText={setCourse}
-            placeholder="Enter your course"
-          />
+            <Text style={styles.label}>Course</Text>
+            <TextInput
+              style={styles.input}
+              value={course}
+              onChangeText={setCourse}
+              placeholder="Enter your course"
+            />
 
-          <Text style={styles.label}>Year</Text>
-          <TextInput
-            style={styles.input}
-            value={year}
-            onChangeText={setYear}
-            keyboardType="numeric"
-            placeholder="Enter your year"
-          />
+            <Text style={styles.label}>Year</Text>
+            <TextInput
+              style={styles.input}
+              value={year}
+              onChangeText={setYear}
+              keyboardType="numeric"
+              placeholder="Enter your year"
+            />
 
-          <Text style={styles.label}>Semester</Text>
-          <TextInput
-            style={styles.input}
-            value={semester}
-            onChangeText={setSemester}
-            keyboardType="numeric"
-            placeholder="Enter your semester"
-          />
+            <Text style={styles.label}>Semester</Text>
+            <TextInput
+              style={styles.input}
+              value={semester}
+              onChangeText={setSemester}
+              keyboardType="numeric"
+              placeholder="Enter your semester"
+            />
 
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="Enter your email"
-          />
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="Enter your email"
+            />
 
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Enter a password"
-          />
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Enter a password"
+            />
 
-          <Pressable
-            onPress={handleRegister}
-            style={({ pressed }) => [styles.button, pressed && styles.pressed]}
-          >
-            <Text style={styles.buttonText}>Register</Text>
-          </Pressable>
-
-          <Link href="/login" asChild>
-            <Pressable style={styles.linkButton}>
-              <Text style={styles.linkText}>
-                Already have an account? Login
-              </Text>
+            <Pressable
+              onPress={handleRegister}
+              style={({ pressed }) => [
+                styles.button,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.buttonText}>Register</Text>
             </Pressable>
-          </Link>
-          {error && <Text style={styles.error}>{error}</Text>}
-        </View>
-      </TouchableWithoutFeedback>
-    </ScrollView>
+
+            <Link href="/login" asChild>
+              <Pressable style={styles.linkButton}>
+                <Text style={styles.linkText}>
+                  Already have an account? Login
+                </Text>
+              </Pressable>
+            </Link>
+            {error && <Text style={styles.error}>{error}</Text>}
+          </View>
+        </TouchableWithoutFeedback>
+      </ScrollView>
+    </KeyboardAwareScrollView>
   );
 };
 

@@ -8,11 +8,13 @@ import {
   Image,
   TouchableWithoutFeedback,
   Keyboard,
+  Platform,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BACKEND_URL } from "../../config";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -50,43 +52,56 @@ const Login = () => {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
-        <Image source={require("../../assets/Logo.png")} style={styles.logo} />
+    <KeyboardAwareScrollView
+      extraScrollHeight={80}
+      enableOnAndroid={Platform.OS === "android"}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.container}
+      style={{ backgroundColor: "#EBE9E3" }}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
+          <Image
+            source={require("../../assets/Logo.png")}
+            style={styles.logo}
+          />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#999"
-          value={email}
-          onChangeText={setEmail}
-        />
+          <TextInput
+            style={[styles.input, { width: 300 }]}
+            placeholder="Email"
+            placeholderTextColor="#999"
+            value={email}
+            onChangeText={setEmail}
+          />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor="#999"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
+          <TextInput
+            style={[styles.input, { width: 300 }]}
+            placeholder="Password"
+            placeholderTextColor="#999"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
 
-        <Pressable
-          onPress={handleLogin}
-          style={({ pressed }) => [styles.button, pressed && styles.pressed]}
-        >
-          <Text style={styles.buttonText}>Login</Text>
-        </Pressable>
-
-        <Link href="/register" asChild>
-          <Pressable style={styles.linkButton}>
-            <Text style={styles.linkText}>Don't have an account? Register</Text>
+          <Pressable
+            onPress={handleLogin}
+            style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+          >
+            <Text style={styles.buttonText}>Login</Text>
           </Pressable>
-        </Link>
 
-        {error && <Text style={styles.error}>{error}</Text>}
-      </View>
-    </TouchableWithoutFeedback>
+          <Link href="/register" asChild>
+            <Pressable style={styles.linkButton}>
+              <Text style={styles.linkText}>
+                Don't have an account? Register
+              </Text>
+            </Pressable>
+          </Link>
+
+          {error && <Text style={styles.error}>{error}</Text>}
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAwareScrollView>
   );
 };
 

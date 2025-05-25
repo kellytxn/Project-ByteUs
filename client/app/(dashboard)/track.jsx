@@ -12,6 +12,7 @@ import {
   Alert,
   Switch,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useState, useEffect, useRef } from "react";
 import { PieChart } from "react-native-chart-kit";
@@ -19,6 +20,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import uuid from "react-native-uuid";
 import { BACKEND_URL } from "../../config";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 const screenWidth = Dimensions.get("window").width;
 const screenHeight = Dimensions.get("window").height;
@@ -285,364 +287,379 @@ const Track = () => {
   const formStartRef = useRef(null);
 
   return (
-    <ScrollView
-      ref={scrollViewRef}
-      style={styles.container}
-      nestedScrollEnabled={true}
+    <KeyboardAwareScrollView
+      extraScrollHeight={20}
+      enableOnAndroid={Platform.OS === "android"}
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={styles.container}
+      style={{ backgroundColor: "#EBE9E3" }}
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <View style={styles.content}>
-          {isFetching ? (
-            <>
-              <View
-                style={{
-                  flex: 1,
-                  marginTop: screenHeight / 2.5,
-                }}
-              >
-                <ActivityIndicator size="large" color="#AE96C7" />
-                <Text style={{ marginTop: 10, color: "#555" }}>Loading...</Text>
-              </View>
-            </>
-          ) : (
-            <>
-              <Pressable
-                onPress={() => setShowInputs((prev) => !prev)}
-                style={({ pressed }) => [
-                  styles.button,
-                  pressed && styles.pressed,
-                  { alignSelf: "flex-end", marginTop: 20 },
-                ]}
-              >
-                <Text style={styles.buttonText}>{showInputs ? "-" : "+"}</Text>
-              </Pressable>
-
-              {totalUnits > 0 && (
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.container}
+        nestedScrollEnabled={true}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.content}>
+            {isFetching ? (
+              <>
                 <View
                   style={{
-                    alignItems: "center",
-                    justifyContent: "center",
-                    position: "relative",
-                    height: 300,
+                    flex: 1,
+                    marginTop: screenHeight / 2.5,
                   }}
                 >
-                  <PieChart
-                    data={chartData}
-                    width={screenWidth}
-                    height={300}
-                    chartConfig={{
-                      color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                    }}
-                    accessor={"population"}
-                    backgroundColor={"transparent"}
-                    center={[screenWidth / 2 - screenWidth / 4, 0]}
-                    hasLegend={false}
-                    absolute
-                  />
-                  <View
-                    style={{
-                      position: "absolute",
-                      width: 150,
-                      height: 150,
-                      borderRadius: 75,
-                      backgroundColor: "#EBE9E3",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Text style={{ fontWeight: "bold", fontSize: 16 }}>
-                      {completedUnits}/{totalUnits} MCs
-                    </Text>
-                    <Text style={{ fontWeight: "bold", fontSize: 16 }}>
-                      completed
-                    </Text>
-                  </View>
+                  <ActivityIndicator size="large" color="#AE96C7" />
+                  <Text style={{ marginTop: 10, color: "#555" }}>
+                    Loading...
+                  </Text>
                 </View>
-              )}
-
-              {showInputs && (
-                <View
-                  ref={formStartRef}
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: "transparent",
-                      borderColor: "transparent",
-                    },
+              </>
+            ) : (
+              <>
+                <Pressable
+                  onPress={() => setShowInputs((prev) => !prev)}
+                  style={({ pressed }) => [
+                    styles.button,
+                    pressed && styles.pressed,
+                    { alignSelf: "flex-end", marginTop: 20 },
                   ]}
                 >
-                  <Text style={styles.label}>Module code</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={code}
-                    onChangeText={setCode}
-                    placeholder="Enter your module code"
-                  />
+                  <Text style={styles.buttonText}>
+                    {showInputs ? "-" : "+"}
+                  </Text>
+                </Pressable>
 
-                  <Text style={styles.label}>Module name</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={name}
-                    onChangeText={setName}
-                    placeholder="Enter your module name"
-                  />
-
-                  <Text style={styles.label}>Category</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={category}
-                    onChangeText={setCategory}
-                    placeholder="Enter the category of the module"
-                  />
-
-                  <Text style={styles.label}>Modular Credit</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={units}
-                    onChangeText={setUnits}
-                    placeholder="Enter the MCs"
-                    keyboardType="numeric"
-                  />
-
-                  <Text style={styles.label}>Completed?</Text>
+                {totalUnits > 0 && (
                   <View
                     style={{
-                      flexDirection: "row",
                       alignItems: "center",
-                      marginBottom: 20,
-                      alignSelf: "flex-start",
+                      justifyContent: "center",
+                      position: "relative",
+                      height: 300,
                     }}
                   >
-                    <Switch
-                      value={completed}
-                      onValueChange={(val) => {
-                        setCompleted(val);
-                        if (!val) setGrade("NA");
+                    <PieChart
+                      data={chartData}
+                      width={screenWidth}
+                      height={300}
+                      chartConfig={{
+                        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
                       }}
-                      trackColor={{ false: "#ccc", true: "#DFB6CF" }}
-                      thumbColor={"#f4f3f4"}
+                      accessor={"population"}
+                      backgroundColor={"transparent"}
+                      center={[screenWidth / 2 - screenWidth / 4, 0]}
+                      hasLegend={false}
+                      absolute
                     />
-                    <Text style={{ marginLeft: 10, fontSize: 14 }}>
-                      {completed ? "Yes" : "No"}
-                    </Text>
-                  </View>
-
-                  {completed && (
-                    <>
-                      <Text style={styles.label}>Final Grade</Text>
-                      <TextInput
-                        style={styles.input}
-                        value={grade}
-                        onChangeText={setGrade}
-                        placeholder="Enter your grade"
-                      />
-                    </>
-                  )}
-
-                  <View style={styles.buttonRow}>
-                    <Pressable
-                      onPress={handleSave}
-                      disabled={loading}
-                      style={({ pressed }) => [
-                        styles.button,
-                        pressed && styles.pressed,
-                        { flex: 1, marginRight: 10 },
-                      ]}
+                    <View
+                      style={{
+                        position: "absolute",
+                        width: 150,
+                        height: 150,
+                        borderRadius: 75,
+                        backgroundColor: "#EBE9E3",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
                     >
-                      <Text style={styles.buttonText}>
-                        {loading
-                          ? "Saving..."
-                          : editingModuleId
-                          ? "Save"
-                          : "Create"}
+                      <Text style={{ fontWeight: "bold", fontSize: 16 }}>
+                        {completedUnits}/{totalUnits} MCs
                       </Text>
-                    </Pressable>
-
-                    {editingModuleId && (
-                      <Pressable
-                        onPress={handleDelete}
-                        style={({ pressed }) => [
-                          styles.deleteButton,
-                          pressed && styles.pressed,
-                          { flex: 1 },
-                        ]}
-                      >
-                        <Text style={styles.buttonText}>Delete</Text>
-                      </Pressable>
-                    )}
-                  </View>
-                </View>
-              )}
-
-              {module.length > 0 && (
-                <SectionList
-                  scrollEnabled={false}
-                  sections={groupedModules}
-                  keyExtractor={(item) => item.$id}
-                  contentContainerStyle={styles.listContainer}
-                  renderSectionHeader={({ section: { title } }) => (
-                    <Text style={styles.header}>{title}</Text>
-                  )}
-                  renderItem={({ item }) => (
-                    <View style={styles.cardRow}>
-                      <View>
-                        <Text
-                          style={[
-                            styles.code,
-                            item.completed && styles.strikethroughText,
-                          ]}
-                        >
-                          {item.code}
-                        </Text>
-                        <Text
-                          style={[
-                            styles.name,
-                            item.completed && styles.strikethroughText,
-                          ]}
-                        >
-                          {item.name}
-                        </Text>
-                      </View>
-                      <Pressable
-                        onPress={() => handleEdit(item)}
-                        style={({ pressed }) => [
-                          styles.editButton,
-                          pressed && styles.pressed,
-                        ]}
-                      >
-                        <Text style={styles.editButtonText}>Edit</Text>
-                      </Pressable>
+                      <Text style={{ fontWeight: "bold", fontSize: 16 }}>
+                        completed
+                      </Text>
                     </View>
-                  )}
-                />
-              )}
-
-              <View style={styles.gpaBox}>
-                <Text style={[styles.header, { marginTop: 0 }]}>
-                  GPA Calculator
-                </Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Search by module code or name"
-                  value={searchText}
-                  onChangeText={setSearchText}
-                />
-
-                {searchText.trim() !== "" && filteredModules.length > 0 ? (
-                  <View
-                    style={{
-                      maxHeight: 150,
-                      marginTop: 0,
-                    }}
-                  >
-                    {filteredModules.length > 0 &&
-                      filteredModules.map((mod) => {
-                        const selected = selectedModules.some(
-                          (m) => m._id === mod._id
-                        );
-                        return (
-                          <Pressable
-                            key={mod._id}
-                            onPress={() => toggleModuleSelection(mod)}
-                            style={{
-                              marginVertical: 6,
-                              padding: 12,
-                              backgroundColor: "white",
-                              borderRadius: 12,
-                              borderWidth: 1,
-                              borderColor: "#e0e0e0",
-                              shadowColor: "#000",
-                              shadowOffset: { width: 0, height: 1 },
-                              shadowOpacity: 0.1,
-                              shadowRadius: 3,
-                              elevation: 2,
-                            }}
-                          >
-                            <Text style={{ fontWeight: "bold" }}>
-                              {mod.code} - {mod.name}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
                   </View>
-                ) : null}
+                )}
 
-                {selectedModules.length > 0 && (
-                  <>
-                    <Text
-                      style={[styles.header, { marginTop: 0, marginBottom: 0 }]}
+                {showInputs && (
+                  <View
+                    ref={formStartRef}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: "transparent",
+                        borderColor: "transparent",
+                      },
+                    ]}
+                  >
+                    <Text style={styles.label}>Module code</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={code}
+                      onChangeText={setCode}
+                      placeholder="Enter your module code"
+                    />
+
+                    <Text style={styles.label}>Module name</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={name}
+                      onChangeText={setName}
+                      placeholder="Enter your module name"
+                    />
+
+                    <Text style={styles.label}>Category</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={category}
+                      onChangeText={setCategory}
+                      placeholder="Enter the category of the module"
+                    />
+
+                    <Text style={styles.label}>Modular Credit</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={units}
+                      onChangeText={setUnits}
+                      placeholder="Enter the MCs"
+                      keyboardType="numeric"
+                    />
+
+                    <Text style={styles.label}>Completed?</Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginBottom: 20,
+                        alignSelf: "flex-start",
+                      }}
                     >
-                      Selected:
-                    </Text>
+                      <Switch
+                        value={completed}
+                        onValueChange={(val) => {
+                          setCompleted(val);
+                          if (!val) setGrade("NA");
+                        }}
+                        trackColor={{ false: "#ccc", true: "#DFB6CF" }}
+                        thumbColor={"#f4f3f4"}
+                      />
+                      <Text style={{ marginLeft: 10, fontSize: 14 }}>
+                        {completed ? "Yes" : "No"}
+                      </Text>
+                    </View>
+
+                    {completed && (
+                      <>
+                        <Text style={styles.label}>Final Grade</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={grade}
+                          onChangeText={setGrade}
+                          placeholder="Enter your grade"
+                        />
+                      </>
+                    )}
+
+                    <View style={styles.buttonRow}>
+                      <Pressable
+                        onPress={handleSave}
+                        disabled={loading}
+                        style={({ pressed }) => [
+                          styles.button,
+                          pressed && styles.pressed,
+                          { flex: 1, marginRight: 10 },
+                        ]}
+                      >
+                        <Text style={styles.buttonText}>
+                          {loading
+                            ? "Saving..."
+                            : editingModuleId
+                            ? "Save"
+                            : "Create"}
+                        </Text>
+                      </Pressable>
+
+                      {editingModuleId && (
+                        <Pressable
+                          onPress={handleDelete}
+                          style={({ pressed }) => [
+                            styles.deleteButton,
+                            pressed && styles.pressed,
+                            { flex: 1 },
+                          ]}
+                        >
+                          <Text style={styles.buttonText}>Delete</Text>
+                        </Pressable>
+                      )}
+                    </View>
+                  </View>
+                )}
+
+                {module.length > 0 && (
+                  <SectionList
+                    scrollEnabled={false}
+                    sections={groupedModules}
+                    keyExtractor={(item) => item.$id}
+                    contentContainerStyle={styles.listContainer}
+                    renderSectionHeader={({ section: { title } }) => (
+                      <Text style={styles.header}>{title}</Text>
+                    )}
+                    renderItem={({ item }) => (
+                      <View style={styles.cardRow}>
+                        <View>
+                          <Text
+                            style={[
+                              styles.code,
+                              item.completed && styles.strikethroughText,
+                            ]}
+                          >
+                            {item.code}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.name,
+                              item.completed && styles.strikethroughText,
+                            ]}
+                          >
+                            {item.name}
+                          </Text>
+                        </View>
+                        <Pressable
+                          onPress={() => handleEdit(item)}
+                          style={({ pressed }) => [
+                            styles.editButton,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <Text style={styles.editButtonText}>Edit</Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  />
+                )}
+
+                <View style={styles.gpaBox}>
+                  <Text style={[styles.header, { marginTop: 0 }]}>
+                    GPA Calculator
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Search by module code or name"
+                    value={searchText}
+                    onChangeText={setSearchText}
+                  />
+
+                  {searchText.trim() !== "" && filteredModules.length > 0 ? (
                     <View
                       style={{
                         maxHeight: 150,
-                        borderWidth: 1,
-                        borderColor: "#C9BDD6",
-                        borderRadius: 12,
-                        backgroundColor: "#C9BDD6",
-                        marginTop: 5,
-                        paddingVertical: 5,
+                        marginTop: 0,
                       }}
                     >
-                      {selectedModules.map((mod) => (
-                        <View
-                          key={mod._id}
-                          style={{
-                            padding: 10,
-                            backgroundColor: "rgba(178, 203, 219, 0.6)",
-                            flexDirection: "row",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            borderRadius: 8,
-                            marginBottom: 15,
-                          }}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ fontWeight: "bold" }}>
-                              {mod.code} - {mod.name}
-                            </Text>
-                            <Text>
-                              Grade: {mod.grade} | MCs: {mod.units}
-                            </Text>
-                          </View>
-                          <Pressable
-                            onPress={() => removeSelectedModule(mod._id)}
-                            style={({ pressed }) => [
-                              {
-                                backgroundColor: "#D3D4D8",
-                                paddingVertical: 6,
-                                paddingHorizontal: 12,
-                                borderRadius: 8,
-                              },
-                              pressed && { opacity: 0.8 },
-                            ]}
-                          >
-                            <Text
-                              style={{ color: "white", fontWeight: "bold" }}
+                      {filteredModules.length > 0 &&
+                        filteredModules.map((mod) => {
+                          const selected = selectedModules.some(
+                            (m) => m._id === mod._id
+                          );
+                          return (
+                            <Pressable
+                              key={mod._id}
+                              onPress={() => toggleModuleSelection(mod)}
+                              style={{
+                                marginVertical: 6,
+                                padding: 12,
+                                backgroundColor: "white",
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: "#e0e0e0",
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 3,
+                                elevation: 2,
+                              }}
                             >
-                              Remove
-                            </Text>
-                          </Pressable>
-                        </View>
-                      ))}
+                              <Text style={{ fontWeight: "bold" }}>
+                                {mod.code} - {mod.name}
+                              </Text>
+                            </Pressable>
+                          );
+                        })}
                     </View>
-                  </>
-                )}
+                  ) : null}
 
-                <View style={{ marginTop: 10, alignItems: "center" }}>
                   {selectedModules.length > 0 && (
-                    <Text style={{ fontWeight: "bold", fontSize: 16 }}>
-                      GPA: {calculateGPA()}
-                    </Text>
+                    <>
+                      <Text
+                        style={[
+                          styles.header,
+                          { marginTop: 0, marginBottom: 0 },
+                        ]}
+                      >
+                        Selected:
+                      </Text>
+                      <View
+                        style={{
+                          maxHeight: 150,
+                          borderWidth: 1,
+                          borderColor: "#C9BDD6",
+                          borderRadius: 12,
+                          backgroundColor: "#C9BDD6",
+                          marginTop: 5,
+                          paddingVertical: 5,
+                        }}
+                      >
+                        {selectedModules.map((mod) => (
+                          <View
+                            key={mod._id}
+                            style={{
+                              padding: 10,
+                              backgroundColor: "rgba(178, 203, 219, 0.6)",
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              borderRadius: 8,
+                              marginBottom: 15,
+                            }}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <Text style={{ fontWeight: "bold" }}>
+                                {mod.code} - {mod.name}
+                              </Text>
+                              <Text>
+                                Grade: {mod.grade} | MCs: {mod.units}
+                              </Text>
+                            </View>
+                            <Pressable
+                              onPress={() => removeSelectedModule(mod._id)}
+                              style={({ pressed }) => [
+                                {
+                                  backgroundColor: "#D3D4D8",
+                                  paddingVertical: 6,
+                                  paddingHorizontal: 12,
+                                  borderRadius: 8,
+                                },
+                                pressed && { opacity: 0.8 },
+                              ]}
+                            >
+                              <Text
+                                style={{ color: "white", fontWeight: "bold" }}
+                              >
+                                Remove
+                              </Text>
+                            </Pressable>
+                          </View>
+                        ))}
+                      </View>
+                    </>
                   )}
+
+                  <View style={{ marginTop: 10, alignItems: "center" }}>
+                    {selectedModules.length > 0 && (
+                      <Text style={{ fontWeight: "bold", fontSize: 16 }}>
+                        GPA: {calculateGPA()}
+                      </Text>
+                    )}
+                  </View>
                 </View>
-              </View>
-            </>
-          )}
-        </View>
-      </TouchableWithoutFeedback>
-    </ScrollView>
+              </>
+            )}
+          </View>
+        </TouchableWithoutFeedback>
+      </ScrollView>
+    </KeyboardAwareScrollView>
   );
 };
 
