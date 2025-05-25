@@ -18,6 +18,7 @@ import { PieChart } from "react-native-chart-kit";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import uuid from "react-native-uuid";
+import { BACKEND_URL } from "../../config";
 
 const screenWidth = Dimensions.get("window").width;
 
@@ -47,7 +48,7 @@ const Track = () => {
       }
 
       try {
-        const res = await axios.post("http://192.168.1.109:5001/getModules", {
+        const res = await axios.post(`${BACKEND_URL}/getModules`, {
           token,
         });
         if (res.data.status === "ok") {
@@ -124,7 +125,7 @@ const Track = () => {
       if (!token) throw new Error("No token found");
 
       if (editingModuleId) {
-        await axios.post("http://192.168.1.109:5001/updateModule", {
+        await axios.post(`${BACKEND_URL}/updateModule`, {
           token,
           moduleId: editingModuleId,
           updatedData: newModule,
@@ -135,7 +136,7 @@ const Track = () => {
           )
         );
       } else {
-        const res = await axios.post("http://192.168.1.109:5001/createModule", {
+        const res = await axios.post(`${BACKEND_URL}/createModule`, {
           token,
           module: newModule,
         });
@@ -167,11 +168,14 @@ const Track = () => {
             try {
               const token = await AsyncStorage.getItem("token");
               if (!token) throw new Error("No token found");
-              await axios.post("http://192.168.1.109:5001/deleteModule", {
+              await axios.post(`${BACKEND_URL}/deleteModule`, {
                 token,
                 moduleId: editingModuleId,
               });
               setModule((prev) =>
+                prev.filter((m) => m._id !== editingModuleId)
+              );
+              setSelectedModules((prev) =>
                 prev.filter((m) => m._id !== editingModuleId)
               );
               clearForm();

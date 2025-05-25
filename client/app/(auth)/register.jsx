@@ -12,6 +12,7 @@ import {
 import { Link, useRouter } from "expo-router";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BACKEND_URL } from "../../config";
 
 const Register = () => {
   const [fullName, setFullName] = useState("");
@@ -37,17 +38,14 @@ const Register = () => {
     };
 
     try {
-      const registerRes = await axios.post(
-        "http://192.168.1.109:5001/register",
-        userData
-      );
+      const registerRes = await axios.post(`${BACKEND_URL}/register`, userData);
 
       if (registerRes.data.status !== "ok") {
         setError(registerRes.data.data || "Registration failed");
         return;
       }
 
-      const loginRes = await axios.post("http://192.168.1.109:5001/login", {
+      const loginRes = await axios.post(`${BACKEND_URL}/login`, {
         email,
         password,
       });

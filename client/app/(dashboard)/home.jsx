@@ -9,6 +9,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import { BACKEND_URL } from "../../config";
 
 const Home = () => {
   const [userData, setUserData] = useState(null);
@@ -25,8 +26,7 @@ const Home = () => {
         setIsLoading(false);
         return;
       }
-
-      const res = await axios.post("http://192.168.1.109:5001/userData", {
+      const res = await axios.post(`${BACKEND_URL}/userData`, {
         token,
       });
 

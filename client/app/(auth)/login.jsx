@@ -12,6 +12,7 @@ import {
 import { Link, useRouter } from "expo-router";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BACKEND_URL } from "../../config";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -28,7 +29,7 @@ const Login = () => {
     };
 
     axios
-      .post("http://192.168.1.109:5001/login", userData)
+      .post(`${BACKEND_URL}/login`, userData)
       .then((res) => {
         console.log(res.data);
         if (res.data.status === "ok") {
