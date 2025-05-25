@@ -297,7 +297,7 @@ const Track = () => {
               <View
                 style={{
                   flex: 1,
-                  marginTop: 440,
+                  marginTop: screenHeight / 2.5,
                 }}
               >
                 <ActivityIndicator size="large" color="#AE96C7" />

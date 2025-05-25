@@ -8,6 +8,7 @@ import {
   Image,
   TouchableWithoutFeedback,
   Keyboard,
+  KeyboardAvoidingView,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
 import axios from "axios";
