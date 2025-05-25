@@ -13,7 +13,7 @@ import {
   Switch,
   ActivityIndicator,
 } from "react-native";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { PieChart } from "react-native-chart-kit";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -90,6 +90,13 @@ const Track = () => {
     setGrade(module.completed ? module.grade : "NA");
     setEditingModuleId(module._id);
     setShowInputs(true);
+
+    setTimeout(() => {
+      scrollViewRef.current?.scrollTo({
+        y: 250,
+        animated: true,
+      });
+    }, 100);
   };
 
   const handleSave = async () => {
@@ -261,6 +268,7 @@ const Track = () => {
       setSelectedModules((prev) => prev.filter((m) => m._id !== mod._id));
     } else {
       setSelectedModules((prev) => [...prev, mod]);
+      setSearchText("");
     }
   };
 
@@ -268,8 +276,15 @@ const Track = () => {
     setSelectedModules((prev) => prev.filter((mod) => mod._id !== moduleId));
   };
 
+  const scrollViewRef = useRef(null);
+  const formStartRef = useRef(null);
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      ref={scrollViewRef}
+      style={styles.container}
+      nestedScrollEnabled={true}
+    >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.content}>
           {isFetching ? (
@@ -341,7 +356,16 @@ const Track = () => {
               )}
 
               {showInputs && (
-                <>
+                <View
+                  ref={formStartRef}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: "transparent",
+                      borderColor: "transparent",
+                    },
+                  ]}
+                >
                   <Text style={styles.label}>Module code</Text>
                   <TextInput
                     style={styles.input}
@@ -442,11 +466,12 @@ const Track = () => {
                       </Pressable>
                     )}
                   </View>
-                </>
+                </View>
               )}
 
               {module.length > 0 && (
                 <SectionList
+                  scrollEnabled={false}
                   sections={groupedModules}
                   keyExtractor={(item) => item.$id}
                   contentContainerStyle={styles.listContainer}
