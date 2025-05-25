@@ -18,7 +18,7 @@ export default function DashboardLayout() {
       <Tabs.Screen
         name="timetable"
         options={{
-          title: "Timetable generator",
+          title: "Timetable",
           tabBarIcon: ({ focused }) => (
             <Ionicons
               size={24}
@@ -46,7 +46,7 @@ export default function DashboardLayout() {
       <Tabs.Screen
         name="track"
         options={{
-          title: "Graduation progress tracker",
+          title: "Progress tracker",
           tabBarIcon: ({ focused }) => (
             <Ionicons
               size={24}
