@@ -570,9 +570,9 @@ const Track = () => {
                       style={{
                         maxHeight: 150,
                         borderWidth: 1,
-                        borderColor: "#EBE5E5",
+                        borderColor: "#C9BDD6",
                         borderRadius: 12,
-                        backgroundColor: "#EBE5E5",
+                        backgroundColor: "#C9BDD6",
                         marginTop: 5,
                         paddingVertical: 5,
                       }}
@@ -750,8 +750,8 @@ const styles = StyleSheet.create({
   },
   gpaBox: {
     width: "100%",
-    backgroundColor: "#EBE5E5",
-    borderColor: "#EBE5E5",
+    backgroundColor: "#C9BDD6",
+    borderColor: "#C9BDD6",
     borderRadius: 16,
     padding: 16,
     marginTop: 15,

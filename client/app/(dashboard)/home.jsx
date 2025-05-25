@@ -58,11 +58,12 @@ const Home = () => {
         <Text style={{ color: "red" }}>{error}</Text>
       ) : userData ? (
         <>
-          <Text style={styles.welcomeText}>Welcome, {userData.name}</Text>
-          <Text style={styles.emailText}>{userData.email}</Text>
-
-          <Pressable onPress={handleLogout} style={styles.button}>
-            <Text style={styles.buttonText}>Logout</Text>
+          <Text style={styles.name}>{userData.name}</Text>
+          <Text style={styles.info}>Course: {userData.course}</Text>
+          <Text style={styles.info}>Year: {userData.year}</Text>
+          <Text style={styles.info}>Semester: {userData.semester}</Text>
+          <Pressable onPress={handleLogout} style={styles.logoutButton}>
+            <Text style={styles.logoutText}>Logout</Text>
           </Pressable>
         </>
       ) : null}
@@ -77,28 +78,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#EBE9E3",
     paddingHorizontal: 30,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
   },
-  welcomeText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  emailText: {
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  button: {
-    backgroundColor: "#AE96C7",
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 12,
-    marginTop: 20,
-  },
-  buttonText: {
-    color: "white",
+  name: {
+    fontSize: 22,
     fontWeight: "600",
+    marginBottom: 8,
+    color: "#222",
+  },
+  info: {
     fontSize: 16,
+    color: "#555",
+    marginVertical: 2,
+  },
+  logoutButton: {
+    marginTop: 15,
+    backgroundColor: "#AE96C7",
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 10,
+  },
+  logoutText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
