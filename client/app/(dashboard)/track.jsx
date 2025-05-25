@@ -21,6 +21,7 @@ import uuid from "react-native-uuid";
 import { BACKEND_URL } from "../../config";
 
 const screenWidth = Dimensions.get("window").width;
+const screenHeight = Dimensions.get("window").height;
 
 const Track = () => {
   const [code, setCode] = useState("");
@@ -334,7 +335,7 @@ const Track = () => {
                     }}
                     accessor={"population"}
                     backgroundColor={"transparent"}
-                    center={[screenWidth / 2 - 110, 0]}
+                    center={[screenWidth / 2 - screenWidth / 4, 0]}
                     hasLegend={false}
                     absolute
                   />
@@ -532,10 +533,6 @@ const Track = () => {
                     style={{
                       maxHeight: 150,
                       marginTop: 0,
-                      borderWidth: 1,
-                      borderColor: "#fff",
-                      borderRadius: 12,
-                      backgroundColor: "#fff",
                     }}
                   >
                     {filteredModules.length > 0 &&
@@ -548,10 +545,17 @@ const Track = () => {
                             key={mod._id}
                             onPress={() => toggleModuleSelection(mod)}
                             style={{
-                              padding: 10,
-                              backgroundColor: selected ? "#DFB6CF" : "white",
-                              borderBottomWidth: 1,
-                              borderBottomColor: "#eee",
+                              marginVertical: 6,
+                              padding: 12,
+                              backgroundColor: "white",
+                              borderRadius: 12,
+                              borderWidth: 1,
+                              borderColor: "#e0e0e0",
+                              shadowColor: "#000",
+                              shadowOffset: { width: 0, height: 1 },
+                              shadowOpacity: 0.1,
+                              shadowRadius: 3,
+                              elevation: 2,
                             }}
                           >
                             <Text style={{ fontWeight: "bold" }}>
@@ -570,7 +574,7 @@ const Track = () => {
                     >
                       Selected:
                     </Text>
-                    <ScrollView
+                    <View
                       style={{
                         maxHeight: 150,
                         borderWidth: 1,
@@ -622,7 +626,7 @@ const Track = () => {
                           </Pressable>
                         </View>
                       ))}
-                    </ScrollView>
+                    </View>
                   </>
                 )}
 
@@ -648,10 +652,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#EBE9E3",
-    paddingHorizontal: 30,
+    paddingHorizontal: 0,
   },
   content: {
-    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 40,
@@ -679,6 +682,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     borderRadius: 12,
     marginBottom: 8,
+    marginRight: 5,
   },
   deleteButton: {
     backgroundColor: "#D3D4D8",
@@ -753,7 +757,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   gpaBox: {
-    width: "100%",
+    width: "89.5%",
     backgroundColor: "#C9BDD6",
     borderColor: "#C9BDD6",
     borderRadius: 16,
