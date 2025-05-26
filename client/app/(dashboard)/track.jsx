@@ -647,7 +647,7 @@ const Track = () => {
                       </>
                     )}
 
-                    <View style={{ marginTop: 10, alignItems: "center" }}>
+                    <View style={{ marginTop: 15, alignItems: "center" }}>
                       {selectedModules.length > 0 && (
                         <Text style={{ fontWeight: "bold", fontSize: 16 }}>
                           GPA: {calculateGPA()}
