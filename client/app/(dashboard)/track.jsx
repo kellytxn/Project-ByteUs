@@ -103,6 +103,27 @@ const Track = () => {
     }, 100);
   };
 
+  const validGrades = [
+    "A+",
+    "A",
+    "A-",
+    "B+",
+    "B",
+    "B-",
+    "C+",
+    "C",
+    "D+",
+    "D",
+    "F",
+    "CS",
+    "CU",
+  ];
+
+  const validateGrade = (grade) => {
+    const upperGrade = grade.toUpperCase();
+    return validGrades.includes(upperGrade);
+  };
+
   const handleSave = async () => {
     if (!code || !name || !category || !units) {
       Alert.alert("Please fill all fields");
@@ -112,6 +133,20 @@ const Track = () => {
     if (isNaN(unitsNum)) {
       Alert.alert("Units must be a number");
       return;
+    }
+    if (completed) {
+      if (!grade) {
+        Alert.alert("Please enter the final grade for completed module");
+        return;
+      }
+
+      if (!validateGrade(grade)) {
+        Alert.alert(
+          "Invalid Grade",
+          `Please enter one of the following grades: ${validGrades.join(", ")}`
+        );
+        return;
+      }
     }
     const newModule = {
       code,
@@ -288,7 +323,7 @@ const Track = () => {
 
   return (
     <KeyboardAwareScrollView
-      extraScrollHeight={20}
+      extraScrollHeight={100}
       enableOnAndroid={Platform.OS === "android"}
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={styles.container}
@@ -530,7 +565,7 @@ const Track = () => {
                   />
                 )}
 
-                {filteredModules.length > 0 && (
+                {module.length > 0 && (
                   <View style={styles.gpaBox}>
                     <Text style={[styles.header, { marginTop: 0 }]}>
                       GPA Calculator

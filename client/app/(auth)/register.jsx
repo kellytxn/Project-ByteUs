@@ -28,11 +28,21 @@ const Register = () => {
 
   const router = useRouter();
 
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(String(email).toLowerCase());
+  };
+
   const handleRegister = async () => {
     setError(null);
 
     if (!fullName || !course || !year || !semester || !email || !password) {
       Alert.alert("Please fill all fields");
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      Alert.alert("Please enter a valid email address");
       return;
     }
 
