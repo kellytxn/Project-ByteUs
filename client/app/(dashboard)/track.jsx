@@ -82,7 +82,6 @@ const Track = () => {
     setUnits("");
     setCompleted(false);
     setGrade("");
-    setEditingModuleId(null);
   };
 
   const handleEdit = (module) => {
@@ -124,6 +123,8 @@ const Track = () => {
     return validGrades.includes(upperGrade);
   };
 
+  const isDuplicate = module.some((mod) => mod.code === code);
+
   const handleSave = async () => {
     if (!code || !name || !category || !units) {
       Alert.alert("Please fill all fields");
@@ -147,6 +148,20 @@ const Track = () => {
         );
         return;
       }
+    } else {
+      setSelectedModules((prev) =>
+        prev.filter((mod) => mod._id !== editingModuleId)
+      );
+    }
+    const isDuplicate = module.some(
+      (mod) => mod.code === code && mod._id !== editingModuleId
+    );
+    if (isDuplicate) {
+      Alert.alert(
+        "Duplicate module",
+        "A module with this code already exists."
+      );
+      return;
     }
     const newModule = {
       code,
@@ -628,7 +643,6 @@ const Track = () => {
                         </Text>
                         <View
                           style={{
-                            maxHeight: 150,
                             borderWidth: 1,
                             borderColor: "#C9BDD6",
                             borderRadius: 12,

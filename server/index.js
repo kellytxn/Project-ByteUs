@@ -133,6 +133,30 @@ app.post("/createModule", async (req, res) => {
       return res.status(404).json({ status: "error", data: "User not found" });
     }
 
+    const duplicate = user.modules.find(
+      (mod) => mod.code === updatedData.code && mod._id.toString() !== moduleId
+    );
+
+    if (duplicate) {
+      return res
+        .status(409)
+        .json({
+          status: "error",
+          data: "Another module with this code exists",
+        });
+    }
+
+    const duplicateModule = user.modules.find(
+      (m) => m.code === module.code || m.name === module.name
+    );
+
+    if (duplicateModule) {
+      return res.status(409).json({
+        status: "error",
+        data: "Module with this code or name already exists",
+      });
+    }
+
     user.modules.push(module);
     await user.save();
 
@@ -189,6 +213,19 @@ app.post("/updateModule", async (req, res) => {
       return res
         .status(404)
         .json({ status: "error", message: "User not found" });
+
+    const duplicate = user.modules.find(
+      (mod) => mod.code === updatedData.code && mod._id.toString() !== moduleId
+    );
+
+    if (duplicate) {
+      return res
+        .status(409)
+        .json({
+          status: "error",
+          data: "Another module with this code exists",
+        });
+    }
 
     const moduleIndex = user.modules.findIndex(
       (m) => m._id.toString() === moduleId

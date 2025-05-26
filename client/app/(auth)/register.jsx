@@ -46,6 +46,11 @@ const Register = () => {
       return;
     }
 
+    if (password.length < 8) {
+      Alert.alert("Password must be at least 8 characters long");
+      return;
+    }
+
     const userData = {
       name: fullName,
       course: course,
