@@ -9,6 +9,7 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Platform,
+  Alert,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
 import axios from "axios";
@@ -29,6 +30,11 @@ const Register = () => {
 
   const handleRegister = async () => {
     setError(null);
+
+    if (!fullName || !course || !year || !semester || !email || !password) {
+      Alert.alert("Please fill all fields");
+      return;
+    }
 
     const userData = {
       name: fullName,
