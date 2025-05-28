@@ -152,7 +152,8 @@ const Track = () => {
       );
     }
     const isDuplicate = module.some(
-      (mod) => mod.code === code && mod._id !== editingModuleId
+      (mod) =>
+        (mod.code === code || mod.name === name) && mod._id !== editingModuleId
     );
     if (isDuplicate) {
       Alert.alert(
