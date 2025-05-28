@@ -82,7 +82,11 @@ const Register = () => {
       }
     } catch (err) {
       console.log(err);
-      setError("Something went wrong. Please try again.");
+      if (err.response?.data?.data) {
+        setError(err.response.data.data);
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
     }
   };
 
