@@ -123,8 +123,6 @@ const Track = () => {
     return validGrades.includes(upperGrade);
   };
 
-  const isDuplicate = module.some((mod) => mod.code === code);
-
   const handleSave = async () => {
     if (!code || !name || !category || !units) {
       Alert.alert("Please fill all fields");
@@ -200,6 +198,7 @@ const Track = () => {
       }
       clearForm();
       setShowInputs(false);
+      setEditingModuleId(null);
     } catch (error) {
       Alert.alert("Error saving module", error.message);
     } finally {
@@ -368,7 +367,13 @@ const Track = () => {
             ) : (
               <>
                 <Pressable
-                  onPress={() => setShowInputs((prev) => !prev)}
+                  onPress={() => {
+                    if (!showInputs) {
+                      clearForm();
+                      setEditingModuleId(null);
+                    }
+                    setShowInputs((prev) => !prev);
+                  }}
                   style={({ pressed }) => [
                     styles.button,
                     pressed && styles.pressed,

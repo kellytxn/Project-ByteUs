@@ -133,19 +133,6 @@ app.post("/createModule", async (req, res) => {
       return res.status(404).json({ status: "error", data: "User not found" });
     }
 
-    const duplicate = user.modules.find(
-      (mod) => mod.code === updatedData.code && mod._id.toString() !== moduleId
-    );
-
-    if (duplicate) {
-      return res
-        .status(409)
-        .json({
-          status: "error",
-          data: "Another module with this code exists",
-        });
-    }
-
     const duplicateModule = user.modules.find(
       (m) => m.code === module.code || m.name === module.name
     );
@@ -160,9 +147,15 @@ app.post("/createModule", async (req, res) => {
     user.modules.push(module);
     await user.save();
 
+    const newModule = user.modules[user.modules.length - 1];
+
     return res
       .status(200)
-      .json({ status: "ok", data: "Module added successfully" });
+      .json({
+        status: "ok",
+        data: "Module added successfully",
+        id: newModule._id,
+      });
   } catch (error) {
     console.error("Error adding module:", error);
     return res
@@ -197,11 +190,10 @@ app.post("/getModules", async (req, res) => {
 
 app.post("/updateModule", async (req, res) => {
   const { token, moduleId, updatedData } = req.body;
-
   if (!token || !moduleId || !updatedData) {
     return res.status(400).json({
       status: "error",
-      message: "Token, moduleId and updatedData are required",
+      data: "Token, moduleId and updatedData required",
     });
   }
 
@@ -209,44 +201,48 @@ app.post("/updateModule", async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = await User.findOne({ email: decoded.email });
 
-    if (!user)
-      return res
-        .status(404)
-        .json({ status: "error", message: "User not found" });
+    if (!user) {
+      return res.status(404).json({ status: "error", data: "User not found" });
+    }
 
-    const duplicate = user.modules.find(
-      (mod) => mod.code === updatedData.code && mod._id.toString() !== moduleId
+    const duplicateModule = user.modules.find(
+      (mod) =>
+        (mod.code === updatedData.code || mod.name === updatedData.name) &&
+        mod._id.toString() !== moduleId
     );
 
-    if (duplicate) {
-      return res
-        .status(409)
-        .json({
-          status: "error",
-          data: "Another module with this code exists",
-        });
+    if (duplicateModule) {
+      return res.status(409).json({
+        status: "error",
+        data: "Another module with this code or name exists",
+      });
     }
 
     const moduleIndex = user.modules.findIndex(
-      (m) => m._id.toString() === moduleId
+      (mod) => mod._id.toString() === moduleId
     );
-    if (moduleIndex === -1)
+
+    if (moduleIndex === -1) {
       return res
         .status(404)
-        .json({ status: "error", message: "Module not found" });
+        .json({ status: "error", data: "Module not found" });
+    }
 
     user.modules[moduleIndex] = {
-      ...user.modules[moduleIndex].toObject(),
+      ...user.modules[moduleIndex]._doc,
       ...updatedData,
     };
+
     await user.save();
 
-    return res.status(200).json({ status: "ok", message: "Module updated" });
+    return res
+      .status(200)
+      .json({ status: "ok", data: "Module updated successfully" });
   } catch (error) {
-    console.error("Update error:", error);
+    console.error("Error updating module:", error);
     return res
       .status(500)
-      .json({ status: "error", message: "Failed to update module" });
+      .json({ status: "error", data: "Failed to update module" });
   }
 });
 
