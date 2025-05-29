@@ -819,69 +819,73 @@ const Track = () => {
                     )}
                   />
                 )}
-                <View style={styles.progressionBox}>
-                  <Text style={[styles.header, { marginTop: 0 }]}>
-                    GPA Progression
-                  </Text>
+                {semData.length > 0 && (
+                  <View style={styles.progressionBox}>
+                    <Text style={[styles.header, { marginTop: 0 }]}>
+                      GPA Progression
+                    </Text>
 
-                  {semData.length === 1 && (
-                    <View style={{ alignItems: "center", marginBottom: 15 }}>
-                      <Circle
-                        size={200}
-                        progress={semData[0].gpa / 5}
-                        showsText
-                        formatText={() => `${semData[0].gpa.toFixed(2)} / 5.00`}
-                        color="#DFB6CF"
-                        unfilledColor="#F5E6F0"
-                        thickness={30}
-                        borderWidth={0}
-                        textStyle={{
-                          fontWeight: "bold",
-                          color: "black",
-                          fontSize: 20,
+                    {semData.length === 1 && (
+                      <View style={{ alignItems: "center", marginBottom: 15 }}>
+                        <Circle
+                          size={200}
+                          progress={semData[0].gpa / 5}
+                          showsText
+                          formatText={() =>
+                            `${semData[0].gpa.toFixed(2)} / 5.00`
+                          }
+                          color="#DFB6CF"
+                          unfilledColor="#F5E6F0"
+                          thickness={30}
+                          borderWidth={0}
+                          textStyle={{
+                            fontWeight: "bold",
+                            color: "black",
+                            fontSize: 20,
+                          }}
+                        />
+                        <Text style={{ color: "black", marginTop: 8 }}>
+                          Y{semData[0].year}S{semData[0].semester}
+                        </Text>
+                      </View>
+                    )}
+
+                    {semData.length !== 1 && (
+                      <LineChart
+                        data={lineChartData}
+                        width={screenWidth - 50}
+                        height={250}
+                        chartConfig={{
+                          backgroundGradientFrom: "#EBE9E3",
+                          backgroundGradientTo: "#EBE9E3",
+                          decimalPlaces: 2,
+                          color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                          labelColor: (opacity = 1) =>
+                            `rgba(0, 0, 0, ${opacity})`,
+                          propsForDots: {
+                            r: "5",
+                            strokeWidth: "2",
+                            stroke: "#7B7878",
+                            fill: "#7B7878",
+                          },
+                          propsForBackgroundLines: {
+                            stroke: "#BFBFBF",
+                            strokeDasharray: "6",
+                          },
+                          style: {
+                            borderRadius: 4,
+                          },
                         }}
+                        style={{
+                          marginVertical: 5,
+                          borderRadius: 16,
+                        }}
+                        fromZero
+                        yAxisInterval={1}
                       />
-                      <Text style={{ color: "black", marginTop: 8 }}>
-                        Y{semData[0].year}S{semData[0].semester}
-                      </Text>
-                    </View>
-                  )}
-
-                  {semData.length !== 1 && (
-                    <LineChart
-                      data={lineChartData}
-                      width={screenWidth - 50}
-                      height={250}
-                      chartConfig={{
-                        backgroundGradientFrom: "#EBE9E3",
-                        backgroundGradientTo: "#EBE9E3",
-                        decimalPlaces: 2,
-                        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-                        labelColor: (opacity = 1) =>
-                          `rgba(0, 0, 0, ${opacity})`,
-                        propsForDots: {
-                          r: "5",
-                          strokeWidth: "2",
-                          stroke: "#7B7878",
-                          fill: "#7B7878",
-                        },
-                        propsForBackgroundLines: {
-                          stroke: "#BFBFBF",
-                          strokeDasharray: "6",
-                        },
-                        style: {
-                          borderRadius: 4,
-                        },
-                      }}
-                      style={{
-                        marginVertical: 5,
-                        borderRadius: 16,
-                      }}
-                      fromZero
-                      yAxisInterval={1}
-                    />
-                  )}
-                </View>
+                    )}
+                  </View>
+                )}
 
                 {module.length > 0 && (
                   <View style={[styles.gpaBox]}>
