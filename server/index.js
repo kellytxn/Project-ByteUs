@@ -149,13 +149,11 @@ app.post("/createModule", async (req, res) => {
 
     const newModule = user.modules[user.modules.length - 1];
 
-    return res
-      .status(200)
-      .json({
-        status: "ok",
-        data: "Module added successfully",
-        id: newModule._id,
-      });
+    return res.status(200).json({
+      status: "ok",
+      data: "Module added successfully",
+      id: newModule._id,
+    });
   } catch (error) {
     console.error("Error adding module:", error);
     return res
@@ -273,6 +271,59 @@ app.post("/deleteModule", async (req, res) => {
     return res
       .status(500)
       .json({ status: "error", message: "Failed to delete module" });
+  }
+});
+
+app.post("/updateUserData", async (req, res) => {
+  const { token, name, course, year, semester } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ status: "error", data: "Token is required" });
+  }
+
+  try {
+    // Verify the token
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userEmail = decoded.email;
+
+    // Find the user
+    const user = await User.findOne({ email: userEmail });
+    if (!user) {
+      return res.status(404).json({ status: "error", data: "User not found" });
+    }
+
+    // Update the fields if they're provided
+    if (name) user.name = name;
+    if (course) user.course = course;
+    if (year) user.year = year;
+    if (semester) user.semester = semester;
+
+    // Save the updated user
+    await user.save();
+
+    // Return success response with updated data (excluding sensitive fields)
+    const updatedUser = {
+      name: user.name,
+      email: user.email,
+      course: user.course,
+      year: user.year,
+      semester: user.semester,
+      modules: user.modules,
+    };
+
+    return res.status(200).json({
+      status: "ok",
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.error("Update user error:", error);
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ status: "error", data: "Invalid token" });
+    }
+    return res.status(500).json({
+      status: "error",
+      data: "Failed to update user data",
+    });
   }
 });
 

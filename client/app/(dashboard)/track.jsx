@@ -48,6 +48,29 @@ const Track = () => {
   const [ghostCategory, setGhostCategory] = useState("");
   const [availableCategories, setAvailableCategories] = useState([]);
   const [isCategoryFocused, setIsCategoryFocused] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState({});
+
+  const toggleCategory = (category) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [category]: !prev[category],
+    }));
+  };
+
+  const getCategoryStats = () => {
+    return groupedModules.map(({ title, data }) => {
+      const total = data.length;
+      const completed = data.filter((m) => m.completed).length;
+      const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      return {
+        title,
+        total,
+        completed,
+        percentage,
+      };
+    });
+  };
 
   const handleCategoryChange = (text) => {
     setCategory(text);
@@ -782,41 +805,86 @@ const Track = () => {
                     sections={groupedModules}
                     keyExtractor={(item) => item.$id}
                     contentContainerStyle={styles.listContainer}
-                    renderSectionHeader={({ section: { title } }) => (
-                      <Text style={styles.header}>{title}</Text>
-                    )}
-                    renderItem={({ item }) => (
-                      <View style={styles.cardRow}>
-                        <View>
-                          <Text
-                            style={[
-                              styles.code,
-                              item.completed && styles.strikethroughText,
-                            ]}
-                          >
-                            {item.code}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.name,
-                              item.completed && styles.strikethroughText,
-                              { maxWidth: 240 },
-                            ]}
-                          >
-                            {item.name}
-                          </Text>
-                        </View>
+                    renderSectionHeader={({ section: { title } }) => {
+                      const stats = getCategoryStats().find(
+                        (s) => s.title === title
+                      );
+
+                      return (
                         <Pressable
-                          onPress={() => handleEdit(item)}
+                          onPress={() => toggleCategory(title)}
                           style={({ pressed }) => [
-                            styles.editButton,
+                            styles.categoryHeader,
                             pressed && styles.pressed,
                           ]}
                         >
-                          <Text style={styles.editButtonText}>Edit</Text>
+                          <View style={styles.categoryHeaderContent}>
+                            {/* Category Title */}
+                            <View>
+                              <Text
+                                style={styles.header}
+                                numberOfLines={2}
+                                ellipsizeMode="tail"
+                              >
+                                {title}
+                              </Text>
+                              <Text style={styles.arrow}>
+                                {expandedCategories[title] ? "▼" : "▶"}
+                              </Text>
+                            </View>
+
+                            {/* Stats & Progress Bar */}
+                            <View style={styles.progressBarContainer}>
+                              <View
+                                style={[
+                                  styles.progressBar,
+                                  {
+                                    width: `${stats.percentage}%`,
+                                    backgroundColor: "rgb(178, 203, 219)",
+                                  },
+                                ]}
+                              />
+                            </View>
+                          </View>
                         </Pressable>
-                      </View>
-                    )}
+                      );
+                    }}
+                    renderItem={({ item, section }) => {
+                      if (!expandedCategories[section.title]) return null;
+
+                      return (
+                        <View style={styles.cardRow}>
+                          <View>
+                            <Text
+                              style={[
+                                styles.code,
+                                item.completed && styles.strikethroughText,
+                              ]}
+                            >
+                              {item.code}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.name,
+                                item.completed && styles.strikethroughText,
+                                { maxWidth: 240 },
+                              ]}
+                            >
+                              {item.name}
+                            </Text>
+                          </View>
+                          <Pressable
+                            onPress={() => handleEdit(item)}
+                            style={({ pressed }) => [
+                              styles.editButton,
+                              pressed && styles.pressed,
+                            ]}
+                          >
+                            <Text style={styles.editButtonText}>Edit</Text>
+                          </Pressable>
+                        </View>
+                      );
+                    }}
                   />
                 )}
                 {semData.length > 0 && (
@@ -1150,5 +1218,41 @@ const styles = StyleSheet.create({
     pointerEvents: "none",
     includeFontPadding: false,
     marginTop: 1,
+  },
+  categoryHeader: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    marginBottom: 10,
+    width: "100%",
+  },
+  categoryHeaderContent: {
+    flexDirection: "column",
+    paddingHorizontal: 16,
+  },
+  categoryInfo: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+    flexWrap: "wrap",
+  },
+  progressBarContainer: {
+    height: 10,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 3,
+    overflow: "hidden",
+    marginBottom: 8,
+  },
+  progressBar: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  arrow: {
+    alignSelf: "flex-end",
+    fontSize: 16,
+    color: "#E0E0E0",
+    marginBottom: 8,
   },
 });

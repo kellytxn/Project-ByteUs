@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   Image,
   ScrollView,
+  TextInput,
+  Alert,
 } from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -20,6 +22,14 @@ const Home = () => {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [profilePic, setProfilePic] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    course: "",
+    year: "",
+    semester: "",
+  });
+
   const router = useRouter();
 
   async function getData() {
@@ -32,13 +42,11 @@ const Home = () => {
         return;
       }
 
-      // Fetch user data
       const res = await axios.post(`${BACKEND_URL}/userData`, {
         token,
       });
       setUserData(res.data.data);
 
-      // Check for existing profile picture in local storage
       const savedImage = await AsyncStorage.getItem("profilePic");
       if (savedImage) setProfilePic(savedImage);
     } catch (err) {
@@ -55,14 +63,12 @@ const Home = () => {
   }
 
   const pickImage = async () => {
-    // Request permissions
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       alert("Sorry, we need camera roll permissions!");
       return;
     }
 
-    // Launch image picker
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -72,7 +78,6 @@ const Home = () => {
 
     if (!result.canceled) {
       setProfilePic(result.assets[0].uri);
-      // Save profile picture URI to local storage
       await AsyncStorage.setItem("profilePic", result.assets[0].uri);
     }
   };
@@ -81,9 +86,39 @@ const Home = () => {
     getData();
   }, []);
 
+  useEffect(() => {
+    if (userData) {
+      setFormData({
+        name: userData.name,
+        course: userData.course,
+        year: userData.year.toString(),
+        semester: userData.semester.toString(),
+      });
+    }
+  }, [userData]);
+
+  const handleSave = async () => {
+    const { name, course, year, semester } = formData;
+
+    if (!name || !course || !year || !semester) {
+      Alert.alert("Please fill in all fields before saving.");
+      return;
+    }
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const res = await axios.post(`${BACKEND_URL}/updateUserData`, {
+        token,
+        ...formData,
+      });
+      setUserData(res.data.data);
+      setIsEditing(false);
+    } catch (err) {
+      setError("Failed to update data");
+    }
+  };
+
   return (
     <View style={styles.container}>
-      {/* Loading State */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#AE96C7" />
@@ -105,13 +140,11 @@ const Home = () => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Welcome Header */}
           <View style={styles.header}>
             <Text style={styles.welcomeText}>Welcome back,</Text>
             <Text style={styles.name}>{userData.name}</Text>
           </View>
 
-          {/* Profile Image */}
           <View style={styles.profileSection}>
             <Pressable onPress={pickImage} style={styles.profileImageContainer}>
               {profilePic ? (
@@ -130,12 +163,48 @@ const Home = () => {
             </Pressable>
           </View>
 
-          {/* User Info Card */}
           <View style={styles.infoCard}>
+            <View style={styles.cardHeader}>
+              <Pressable onPress={() => setIsEditing(!isEditing)}>
+                <Ionicons
+                  name={isEditing ? "close" : "create"}
+                  size={22}
+                  color="#AE96C7"
+                />
+              </Pressable>
+            </View>
+
+            {isEditing && (
+              <>
+                <View style={styles.infoRow}>
+                  <Ionicons name="person" size={22} color="#AE96C7" />
+                  <Text style={styles.infoLabel}>Name:</Text>
+                  <TextInput
+                    value={formData.name}
+                    onChangeText={(text) =>
+                      setFormData({ ...formData, name: text })
+                    }
+                    style={styles.input}
+                  />
+                </View>
+                <View style={styles.divider} />
+              </>
+            )}
+
             <View style={styles.infoRow}>
               <Ionicons name="book" size={22} color="#AE96C7" />
               <Text style={styles.infoLabel}>Course:</Text>
-              <Text style={styles.infoValue}>{userData.course}</Text>
+              {isEditing ? (
+                <TextInput
+                  value={formData.course}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, course: text })
+                  }
+                  style={styles.input}
+                />
+              ) : (
+                <Text style={styles.infoValue}>{userData.course}</Text>
+              )}
             </View>
 
             <View style={styles.divider} />
@@ -143,7 +212,18 @@ const Home = () => {
             <View style={styles.infoRow}>
               <Ionicons name="school" size={22} color="#AE96C7" />
               <Text style={styles.infoLabel}>Year:</Text>
-              <Text style={styles.infoValue}>{userData.year}</Text>
+              {isEditing ? (
+                <TextInput
+                  value={formData.year}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, year: text })
+                  }
+                  style={styles.input}
+                  keyboardType="numeric"
+                />
+              ) : (
+                <Text style={styles.infoValue}>{userData.year}</Text>
+              )}
             </View>
 
             <View style={styles.divider} />
@@ -151,11 +231,31 @@ const Home = () => {
             <View style={styles.infoRow}>
               <Ionicons name="calendar" size={22} color="#AE96C7" />
               <Text style={styles.infoLabel}>Semester:</Text>
-              <Text style={styles.infoValue}>{userData.semester}</Text>
+              {isEditing ? (
+                <TextInput
+                  value={formData.semester}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, semester: text })
+                  }
+                  style={styles.input}
+                  keyboardType="numeric"
+                />
+              ) : (
+                <Text style={styles.infoValue}>{userData.semester}</Text>
+              )}
             </View>
+
+            {isEditing && (
+              <Pressable
+                onPress={handleSave}
+                style={styles.saveButton}
+                android_ripple={{ color: "#9C7FC5" }}
+              >
+                <Text style={styles.saveButtonText}>Save Changes</Text>
+              </Pressable>
+            )}
           </View>
 
-          {/* Logout Button */}
           <Pressable
             onPress={handleLogout}
             style={styles.logoutButton}
@@ -281,7 +381,7 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 5,
+    paddingVertical: 10,
   },
   infoLabel: {
     marginLeft: 12,
@@ -317,6 +417,41 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   logoutText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 0,
+    alignSelf: "flex-end",
+    marginTop: -10,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+  },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: "#EBE9E3",
+    borderRadius: 8,
+    padding: 8,
+    fontSize: 16,
+    backgroundColor: "#FFF",
+    marginLeft: 10,
+  },
+  saveButton: {
+    backgroundColor: "#AE96C7",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 15,
+  },
+  saveButtonText: {
     color: "white",
     fontSize: 16,
     fontWeight: "600",
