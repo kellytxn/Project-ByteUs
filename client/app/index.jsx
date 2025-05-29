@@ -48,7 +48,7 @@ const Home = () => {
     <View style={styles.container}>
       <Image source={require("../assets/Logo.png")} style={styles.logo} />
 
-      <View style={styles.linkContainer}>
+      <View style={styles.linkContainer}> //create buttons
         <Pressable
           onPress={() => router.push("/login")}
           style={({ pressed }) => [styles.box, pressed && styles.pressedBox]}
