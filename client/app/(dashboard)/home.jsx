@@ -170,19 +170,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#EBE9E3",
-    paddingTop: 20, // Added top padding to shift everything down
+    paddingTop: 20, 
   },
   scrollContent: {
     flexGrow: 1,
     padding: 25,
-    paddingTop: 35, // Increased top padding
+    paddingTop: 35, 
     alignItems: "center",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingTop: 20, // Added top padding
+    paddingTop: 20, 
   },
   loadingText: {
     marginTop: 20,
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 30,
-    paddingTop: 50, // Added top padding
+    paddingTop: 50, 
   },
   errorText: {
     color: "#FF6B6B",
@@ -219,12 +219,12 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 30,
     alignItems: "center",
-    marginTop: 10, // Added margin
+    marginTop: 10, 
   },
   welcomeText: {
     fontSize: 22,
     color: "#555",
-    marginBottom: 5,
+    marginBottom: 10,
   },
   name: {
     fontSize: 28,
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
   profileSection: {
     alignItems: "center",
     marginBottom: 30,
-    marginTop: 15, // Added margin
+    marginTop: 0,
   },
   profileImageContainer: {
     position: "relative",
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     width: "100%",
     padding: 20,
     marginBottom: 30,
-    marginTop: 15, // Added margin
+    marginTop: 15,
     shadowColor: "#AE96C7",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 14,
+    paddingVertical: 5,
   },
   infoLabel: {
     marginLeft: 12,
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 10,
     elevation: 5,
-    marginTop: 15, // Added margin
+    marginTop: 15,
   },
   logoutText: {
     color: "white",
