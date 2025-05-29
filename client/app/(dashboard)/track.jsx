@@ -599,7 +599,7 @@ const Track = () => {
                     />
 
                     {searchText.trim() !== "" && filteredModules.length > 0 ? (
-                      <View
+                      <ScrollView
                         style={{
                           maxHeight: 150,
                           marginTop: 0,
@@ -634,7 +634,7 @@ const Track = () => {
                               </Pressable>
                             );
                           })}
-                      </View>
+                      </ScrollView>
                     ) : null}
 
                     {selectedModules.length > 0 && (

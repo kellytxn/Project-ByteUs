@@ -49,17 +49,22 @@ const Home = () => {
       <Image source={require("../assets/Logo.png")} style={styles.logo} />
 
       <View style={styles.linkContainer}>
-        <View style={styles.box}>
-          <Pressable onPress={() => router.push("/login")}>
-            <Text style={styles.linkText}>Login</Text>
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={() => router.push("/login")}
+          style={({ pressed }) => [styles.box, pressed && styles.pressedBox]}
+          hitSlop={20} 
+        >
+          <Text style={styles.linkText}>Login</Text>
+        </Pressable>
 
-        <View style={styles.box}>
-          <Pressable onPress={() => router.push("/register")}>
-            <Text style={styles.linkText}>Register</Text>
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={() => router.push("/register")}
+          style={({ pressed }) => [styles.box, pressed && styles.pressedBox]}
+          hitSlop={20}
+
+        >
+          <Text style={styles.linkText}>Register</Text>
+        </Pressable>
       </View>
     </View>
   );
