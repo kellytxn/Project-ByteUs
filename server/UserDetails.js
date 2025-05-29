@@ -8,6 +8,9 @@ const ModuleSchema = new mongoose.Schema(
     units: Number,
     completed: Boolean,
     grade: String,
+    year: String,
+    semester: String,
+    isSU: Boolean,
   },
   { _id: true }
 );

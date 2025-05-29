@@ -14,13 +14,15 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
-import { useState, useEffect, useRef } from "react";
-import { PieChart } from "react-native-chart-kit";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { PieChart, LineChart } from "react-native-chart-kit";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import uuid from "react-native-uuid";
 import { BACKEND_URL } from "../../config";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import debounce from "lodash.debounce";
+import { Circle } from "react-native-progress";
 
 const screenWidth = Dimensions.get("window").width;
 const screenHeight = Dimensions.get("window").height;
@@ -32,6 +34,9 @@ const Track = () => {
   const [units, setUnits] = useState("");
   const [completed, setCompleted] = useState(false);
   const [grade, setGrade] = useState("");
+  const [year, setYear] = useState("");
+  const [semester, setSemester] = useState("");
+  const [isSU, setIsSU] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showInputs, setShowInputs] = useState(false);
   const [module, setModule] = useState([]);
@@ -39,6 +44,64 @@ const Track = () => {
   const [isFetching, setIsFetching] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [selectedModules, setSelectedModules] = useState([]);
+  const [isSearchingNUSMods, setIsSearchingNUSMods] = useState(false);
+  const [ghostCategory, setGhostCategory] = useState("");
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [isCategoryFocused, setIsCategoryFocused] = useState(false);
+
+  const handleCategoryChange = (text) => {
+    setCategory(text);
+
+    if (text.trim()) {
+      const match = availableCategories.find((cat) =>
+        cat.toLowerCase().startsWith(text.toLowerCase())
+      );
+      setGhostCategory(match || "");
+    } else {
+      setGhostCategory("");
+    }
+  };
+
+  const handleCategorySubmit = () => {
+    if (ghostCategory) {
+      setCategory(ghostCategory);
+      setGhostCategory("");
+    }
+  };
+
+  useEffect(() => {
+    const categories = [
+      ...new Set(module.map((m) => m.category).filter(Boolean)),
+    ];
+    setAvailableCategories(categories);
+  }, [module]);
+
+  const searchNUSMods = useCallback(
+    debounce(async (searchTerm) => {
+      if (!searchTerm.trim()) return;
+
+      setIsSearchingNUSMods(true);
+      try {
+        const response = await axios.get(
+          `https://api.nusmods.com/v2/2023-2024/modules/${searchTerm
+            .trim()
+            .toUpperCase()}.json`
+        );
+
+        if (response.data) {
+          const modData = response.data;
+          setCode(modData.moduleCode);
+          setName(modData.title);
+          setUnits(modData.moduleCredit.toString());
+        }
+      } catch (error) {
+        console.log("Module not found in NUS Mods API");
+      } finally {
+        setIsSearchingNUSMods(false);
+      }
+    }, 500),
+    []
+  );
 
   useEffect(() => {
     const fetchModules = async () => {
@@ -60,6 +123,7 @@ const Track = () => {
             $id: uuid.v4(),
             _id: m._id,
           }));
+          console.log("Fetched modules:", modulesWithId);
 
           setModule(modulesWithId);
         } else {
@@ -82,6 +146,9 @@ const Track = () => {
     setUnits("");
     setCompleted(false);
     setGrade("");
+    setYear("");
+    setSemester("");
+    setIsSU(false);
   };
 
   const handleEdit = (module) => {
@@ -90,7 +157,10 @@ const Track = () => {
     setCategory(module.category);
     setUnits(module.units.toString());
     setCompleted(module.completed);
-    setGrade(module.completed ? module.grade : "NA");
+    setGrade(module.completed ? module.grade : "");
+    setYear(module.completed ? module.year : "");
+    setSemester(module.completed ? module.semester : "");
+    setIsSU(module.completed ? module.isSU : false);
     setEditingModuleId(module._id);
     setShowInputs(true);
 
@@ -138,6 +208,14 @@ const Track = () => {
         Alert.alert("Please enter the final grade for completed module");
         return;
       }
+      if (!year) {
+        Alert.alert("Please enter the year you completed the module");
+        return;
+      }
+      if (!semester) {
+        Alert.alert("Please enter the semester you completed the module");
+        return;
+      }
 
       if (!validateGrade(grade)) {
         Alert.alert(
@@ -168,7 +246,10 @@ const Track = () => {
       category,
       units: unitsNum,
       completed,
-      grade: completed ? grade : "NA",
+      grade: completed ? grade : "",
+      year: completed ? year : "",
+      semester: completed ? semester : "",
+      isSU: completed ? isSU : false,
     };
 
     setLoading(true);
@@ -333,6 +414,78 @@ const Track = () => {
     setSelectedModules((prev) => prev.filter((mod) => mod._id !== moduleId));
   };
 
+  const calculateGPABySemester = (modules) => {
+    const semesters = {};
+
+    const validModules = modules.filter(
+      (mod) =>
+        mod.completed && mod.grade && !mod.isSU && mod.year && mod.semester
+    );
+
+    validModules.forEach((mod) => {
+      const key = `${mod.year}-${mod.semester}`;
+      if (!semesters[key]) semesters[key] = [];
+      semesters[key].push(mod);
+    });
+
+    return Object.entries(semesters)
+      .map(([key, mods]) => {
+        const [year, semester] = key.split("-");
+        const { gpa, totalUnits } = calculateSemesterGPA(mods);
+
+        return {
+          year,
+          semester,
+          gpa,
+          totalUnits,
+          modules: mods,
+        };
+      })
+      .sort((a, b) => a.year - b.year || a.semester - b.semester);
+  };
+
+  const calculateSemesterGPA = (modules) => {
+    let totalPoints = 0;
+    let totalUnits = 0;
+
+    modules.forEach((mod) => {
+      const gradePoints =
+        {
+          "A+": 5.0,
+          A: 5.0,
+          "A-": 4.5,
+          "B+": 4.0,
+          B: 3.5,
+          "B-": 3.0,
+          "C+": 2.5,
+          C: 2.0,
+          "D+": 1.5,
+          D: 1.0,
+          F: 0.0,
+        }[mod.grade.toUpperCase()] || 0;
+
+      totalPoints += gradePoints * mod.units;
+      totalUnits += mod.units;
+    });
+
+    return {
+      gpa:
+        totalUnits > 0 ? parseFloat((totalPoints / totalUnits).toFixed(2)) : 0,
+      totalUnits,
+    };
+  };
+
+  const semData = calculateGPABySemester(module);
+
+  const lineChartData = {
+    labels: semData.map((sem) => `Y${sem.year}S${sem.semester}`),
+    datasets: [
+      {
+        data: semData.map((sem) => sem.gpa),
+      },
+    ],
+  };
+
   const scrollViewRef = useRef(null);
   const formStartRef = useRef(null);
 
@@ -349,14 +502,20 @@ const Track = () => {
         style={styles.container}
         nestedScrollEnabled={true}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <TouchableWithoutFeedback
+          onPress={() => {
+            Keyboard.dismiss();
+            setIsCategoryFocused(false);
+            setGhostCategory("");
+          }}
+        >
           <View style={styles.content}>
             {isFetching ? (
               <>
                 <View
                   style={{
                     flex: 1,
-                    marginTop: screenHeight / 2.5,
+                    marginTop: screenHeight / 2.45,
                   }}
                 >
                   <ActivityIndicator size="large" color="#AE96C7" />
@@ -441,29 +600,61 @@ const Track = () => {
                     ]}
                   >
                     <Text style={styles.label}>Module code</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={code}
-                      onChangeText={setCode}
-                      placeholder="Enter your module code"
-                    />
+                    <View
+                      style={{ flexDirection: "row", alignItems: "center" }}
+                    >
+                      <TextInput
+                        style={[styles.input, { flex: 1 }]}
+                        value={code}
+                        onChangeText={(text) => {
+                          setCode(text);
+                          searchNUSMods(text);
+                        }}
+                        placeholder="Enter module code"
+                      />
+                    </View>
 
                     <Text style={styles.label}>Module name</Text>
                     <TextInput
                       style={styles.input}
                       value={name}
                       onChangeText={setName}
-                      placeholder="Enter your module name"
+                      placeholder="Enter module name"
                     />
-
                     <Text style={styles.label}>Category</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={category}
-                      onChangeText={setCategory}
-                      placeholder="Enter the category of the module"
-                    />
-
+                    <View style={{ position: "relative", width: "100%" }}>
+                      <TextInput
+                        style={styles.input}
+                        value={category}
+                        onChangeText={handleCategoryChange}
+                        onSubmitEditing={handleCategorySubmit}
+                        onFocus={() => {
+                          setIsCategoryFocused(true);
+                          if (category) {
+                            const match = availableCategories.find((cat) =>
+                              cat
+                                .toLowerCase()
+                                .startsWith(category.toLowerCase())
+                            );
+                            setGhostCategory(match || "");
+                          }
+                        }}
+                        onBlur={() => {
+                          setIsCategoryFocused(false);
+                          setGhostCategory("");
+                        }}
+                        blurOnSubmit={false}
+                        placeholder="Enter category"
+                      />
+                      {isCategoryFocused && ghostCategory && (
+                        <Text style={styles.ghostText}>
+                          {category}
+                          <Text style={{ color: "#999" }}>
+                            {ghostCategory.slice(category.length)}
+                          </Text>
+                        </Text>
+                      )}
+                    </View>
                     <Text style={styles.label}>Modular Credit</Text>
                     <TextInput
                       style={styles.input}
@@ -486,7 +677,12 @@ const Track = () => {
                         value={completed}
                         onValueChange={(val) => {
                           setCompleted(val);
-                          if (!val) setGrade("NA");
+                          if (!val) {
+                            setGrade("");
+                            setYear("");
+                            setSemester("");
+                            setIsSU(false);
+                          }
                         }}
                         trackColor={{ false: "#ccc", true: "#DFB6CF" }}
                         thumbColor={"#f4f3f4"}
@@ -505,6 +701,43 @@ const Track = () => {
                           onChangeText={setGrade}
                           placeholder="Enter your grade"
                         />
+                        <Text style={styles.label}>Year Taken</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={year}
+                          onChangeText={setYear}
+                          placeholder="Enter the academic year (e.g., 1 for Year 1)"
+                          keyboardType="numeric"
+                        />
+
+                        <Text style={styles.label}>Semester Taken</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={semester}
+                          onChangeText={setSemester}
+                          placeholder="Enter the semester (e.g., 1 for Semester 1)"
+                          keyboardType="numeric"
+                        />
+
+                        <Text style={styles.label}>S/U?</Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            marginBottom: 20,
+                            alignSelf: "flex-start",
+                          }}
+                        >
+                          <Switch
+                            value={isSU}
+                            onValueChange={setIsSU}
+                            trackColor={{ false: "#ccc", true: "#DFB6CF" }}
+                            thumbColor={"#f4f3f4"}
+                          />
+                          <Text style={{ marginLeft: 10, fontSize: 14 }}>
+                            {isSU ? "Yes" : "No"}
+                          </Text>
+                        </View>
                       </>
                     )}
 
@@ -567,6 +800,7 @@ const Track = () => {
                             style={[
                               styles.name,
                               item.completed && styles.strikethroughText,
+                              { maxWidth: 240 },
                             ]}
                           >
                             {item.name}
@@ -585,9 +819,72 @@ const Track = () => {
                     )}
                   />
                 )}
+                <View style={styles.progressionBox}>
+                  <Text style={[styles.header, { marginTop: 0 }]}>
+                    GPA Progression
+                  </Text>
+
+                  {semData.length === 1 && (
+                    <View style={{ alignItems: "center", marginBottom: 15 }}>
+                      <Circle
+                        size={200}
+                        progress={semData[0].gpa / 5}
+                        showsText
+                        formatText={() => `${semData[0].gpa.toFixed(2)} / 5.00`}
+                        color="#DFB6CF"
+                        unfilledColor="#F5E6F0"
+                        thickness={30}
+                        borderWidth={0}
+                        textStyle={{
+                          fontWeight: "bold",
+                          color: "black",
+                          fontSize: 20,
+                        }}
+                      />
+                      <Text style={{ color: "black", marginTop: 8 }}>
+                        Y{semData[0].year}S{semData[0].semester}
+                      </Text>
+                    </View>
+                  )}
+
+                  {semData.length !== 1 && (
+                    <LineChart
+                      data={lineChartData}
+                      width={screenWidth - 50}
+                      height={250}
+                      chartConfig={{
+                        backgroundGradientFrom: "#EBE9E3",
+                        backgroundGradientTo: "#EBE9E3",
+                        decimalPlaces: 2,
+                        color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                        labelColor: (opacity = 1) =>
+                          `rgba(0, 0, 0, ${opacity})`,
+                        propsForDots: {
+                          r: "5",
+                          strokeWidth: "2",
+                          stroke: "#7B7878",
+                          fill: "#7B7878",
+                        },
+                        propsForBackgroundLines: {
+                          stroke: "#BFBFBF",
+                          strokeDasharray: "6",
+                        },
+                        style: {
+                          borderRadius: 4,
+                        },
+                      }}
+                      style={{
+                        marginVertical: 5,
+                        borderRadius: 16,
+                      }}
+                      fromZero
+                      yAxisInterval={1}
+                    />
+                  )}
+                </View>
 
                 {module.length > 0 && (
-                  <View style={styles.gpaBox}>
+                  <View style={[styles.gpaBox]}>
                     <Text style={[styles.header, { marginTop: 0 }]}>
                       GPA Calculator
                     </Text>
@@ -599,7 +896,7 @@ const Track = () => {
                     />
 
                     {searchText.trim() !== "" && filteredModules.length > 0 ? (
-                      <View
+                      <ScrollView
                         style={{
                           maxHeight: 150,
                           marginTop: 0,
@@ -634,17 +931,12 @@ const Track = () => {
                               </Pressable>
                             );
                           })}
-                      </View>
+                      </ScrollView>
                     ) : null}
 
                     {selectedModules.length > 0 && (
                       <>
-                        <Text
-                          style={[
-                            styles.header,
-                            { marginTop: 0, marginBottom: 0 },
-                          ]}
-                        >
+                        <Text style={[styles.header, { marginTop: 5 }]}>
                           Selected:
                         </Text>
                         <View
@@ -667,7 +959,7 @@ const Track = () => {
                                 justifyContent: "space-between",
                                 alignItems: "center",
                                 borderRadius: 8,
-                                marginBottom: 15,
+                                marginBottom: 5,
                               }}
                             >
                               <View style={{ flex: 1 }}>
@@ -683,7 +975,7 @@ const Track = () => {
                                 style={({ pressed }) => [
                                   {
                                     backgroundColor: "#D3D4D8",
-                                    paddingVertical: 6,
+                                    paddingVertical: 3,
                                     paddingHorizontal: 12,
                                     borderRadius: 8,
                                   },
@@ -702,7 +994,7 @@ const Track = () => {
                       </>
                     )}
 
-                    <View style={{ marginTop: 15, alignItems: "center" }}>
+                    <View style={{ marginTop: 10, alignItems: "center" }}>
                       {selectedModules.length > 0 && (
                         <Text style={{ fontWeight: "bold", fontSize: 16 }}>
                           GPA: {calculateGPA()}
@@ -776,7 +1068,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: 16,
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
   code: {
     fontSize: 16,
@@ -836,11 +1128,23 @@ const styles = StyleSheet.create({
     borderColor: "#C9BDD6",
     borderRadius: 16,
     padding: 16,
-    marginTop: 15,
+    marginTop: 10,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  progressionBox: {
+    width: "89.5%",
+  },
+  ghostText: {
+    position: "absolute",
+    left: 15,
+    top: 15,
+    color: "transparent",
+    pointerEvents: "none",
+    includeFontPadding: false,
+    marginTop: 1,
   },
 });
