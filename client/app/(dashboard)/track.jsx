@@ -631,6 +631,10 @@ const Track = () => {
                         value={code}
                         onChangeText={(text) => {
                           setCode(text);
+                          if (!text.trim()) {
+                            setName("");
+                            setUnits("");
+                          }
                           searchNUSMods(text);
                         }}
                         placeholder="Enter module code"
