@@ -87,7 +87,7 @@ const Home = () => {
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#AE96C7" />
-          <Text style={styles.loadingText}>Loading your profile...</Text>
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
@@ -185,10 +185,8 @@ const styles = StyleSheet.create({
     paddingTop: 20, 
   },
   loadingText: {
-    marginTop: 20,
-    fontSize: 16,
+    marginTop: 10,
     color: "#555",
-    fontWeight: "500",
   },
   errorContainer: {
     flex: 1,
