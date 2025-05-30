@@ -282,26 +282,21 @@ app.post("/updateUserData", async (req, res) => {
   }
 
   try {
-    // Verify the token
     const decoded = jwt.verify(token, JWT_SECRET);
     const userEmail = decoded.email;
 
-    // Find the user
     const user = await User.findOne({ email: userEmail });
     if (!user) {
       return res.status(404).json({ status: "error", data: "User not found" });
     }
 
-    // Update the fields if they're provided
     if (name) user.name = name;
     if (course) user.course = course;
     if (year) user.year = year;
     if (semester) user.semester = semester;
 
-    // Save the updated user
     await user.save();
 
-    // Return success response with updated data (excluding sensitive fields)
     const updatedUser = {
       name: user.name,
       email: user.email,
