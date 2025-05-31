@@ -14,6 +14,7 @@ const Home = () => {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
+  // Check if user is logged in
   useEffect(() => {
     const checkToken = async () => {
       try {
@@ -37,9 +38,7 @@ const Home = () => {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#AE96C7" />
-        <Text style={{ marginTop: 10, color: "#555" }}>
-          Checking login status...
-        </Text>
+        <Text style={{ marginTop: 10, color: "#555" }}>Loading...</Text>
       </View>
     );
   }

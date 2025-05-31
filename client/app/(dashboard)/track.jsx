@@ -50,82 +50,10 @@ const Track = () => {
   const [isCategoryFocused, setIsCategoryFocused] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState({});
 
-  const toggleCategory = (category) => {
-    setExpandedCategories((prev) => ({
-      ...prev,
-      [category]: !prev[category],
-    }));
-  };
+  const scrollViewRef = useRef(null);
+  const formStartRef = useRef(null);
 
-  const getCategoryStats = () => {
-    return groupedModules.map(({ title, data }) => {
-      const total = data.length;
-      const completed = data.filter((m) => m.completed).length;
-      const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-      return {
-        title,
-        total,
-        completed,
-        percentage,
-      };
-    });
-  };
-
-  const handleCategoryChange = (text) => {
-    setCategory(text);
-
-    if (text.trim()) {
-      const match = availableCategories.find((cat) =>
-        cat.toLowerCase().startsWith(text.toLowerCase())
-      );
-      setGhostCategory(match || "");
-    } else {
-      setGhostCategory("");
-    }
-  };
-
-  const handleCategorySubmit = () => {
-    if (ghostCategory) {
-      setCategory(ghostCategory);
-      setGhostCategory("");
-    }
-  };
-
-  useEffect(() => {
-    const categories = [
-      ...new Set(module.map((m) => m.category).filter(Boolean)),
-    ];
-    setAvailableCategories(categories);
-  }, [module]);
-
-  const searchNUSMods = useCallback(
-    debounce(async (searchTerm) => {
-      if (!searchTerm.trim()) return;
-
-      setIsSearchingNUSMods(true);
-      try {
-        const response = await axios.get(
-          `https://api.nusmods.com/v2/2023-2024/modules/${searchTerm
-            .trim()
-            .toUpperCase()}.json`
-        );
-
-        if (response.data) {
-          const modData = response.data;
-          setCode(modData.moduleCode);
-          setName(modData.title);
-          setUnits(modData.moduleCredit.toString());
-        }
-      } catch (error) {
-        console.log("Module not found in NUS Mods API");
-      } finally {
-        setIsSearchingNUSMods(false);
-      }
-    }, 500),
-    []
-  );
-
+  // Fetch user modules
   useEffect(() => {
     const fetchModules = async () => {
       setIsFetching(true);
@@ -162,6 +90,7 @@ const Track = () => {
     fetchModules();
   }, []);
 
+  // Clear module creation form
   const clearForm = () => {
     setCode("");
     setName("");
@@ -211,11 +140,13 @@ const Track = () => {
     "CU",
   ];
 
+  // Check if grade entered is valid
   const validateGrade = (grade) => {
     const upperGrade = grade.toUpperCase();
     return validGrades.includes(upperGrade);
   };
 
+  // Create module or save changes
   const handleSave = async () => {
     if (!code || !name || !category || !units) {
       Alert.alert("Please fill all fields");
@@ -311,6 +242,7 @@ const Track = () => {
     }
   };
 
+  // Delete module
   const handleDelete = () => {
     if (!editingModuleId) return;
     Alert.alert(
@@ -352,6 +284,7 @@ const Track = () => {
     0
   );
 
+  // Pie chart
   const chartData = [
     {
       name: "",
@@ -369,18 +302,7 @@ const Track = () => {
     },
   ];
 
-  const groupedModules = Object.entries(
-    module.reduce((acc, mod) => {
-      const category = mod.category;
-      if (!acc[category]) acc[category] = [];
-      acc[category].push(mod);
-      return acc;
-    }, {})
-  ).map(([title, data]) => ({
-    title,
-    data: data.sort((a, b) => a.completed - b.completed),
-  }));
-
+  // Modules that can be searched from gpa calculator
   const availableModules = module.filter(
     (m) =>
       m.completed &&
@@ -389,6 +311,7 @@ const Track = () => {
       m.grade.toUpperCase() !== "CU"
   );
 
+  // Modules that match what user is searching for in gpa clculator
   const filteredModules = availableModules.filter(
     (m) =>
       (m.code.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -410,6 +333,7 @@ const Track = () => {
     F: 0,
   };
 
+  // Calculating gpa for selected modules in gpa calculator
   const calculateGPA = () => {
     if (selectedModules.length === 0) return 0;
     let totalPoints = 0;
@@ -424,6 +348,7 @@ const Track = () => {
     return totalUnits === 0 ? 0 : (totalPoints / totalUnits).toFixed(2);
   };
 
+  // Selecting modules in gpa calculator
   const toggleModuleSelection = (mod) => {
     if (selectedModules.some((m) => m._id === mod._id)) {
       setSelectedModules((prev) => prev.filter((m) => m._id !== mod._id));
@@ -433,10 +358,12 @@ const Track = () => {
     }
   };
 
+  //Un-selecting modules in gpa calculator
   const removeSelectedModule = (moduleId) => {
     setSelectedModules((prev) => prev.filter((mod) => mod._id !== moduleId));
   };
 
+  // Calculating and sorting gpa by semesters
   const calculateGPABySemester = (modules) => {
     const semesters = {};
 
@@ -467,26 +394,14 @@ const Track = () => {
       .sort((a, b) => a.year - b.year || a.semester - b.semester);
   };
 
+  // Calculating gpa for every semester completed
   const calculateSemesterGPA = (modules) => {
     let totalPoints = 0;
     let totalUnits = 0;
 
     modules.forEach((mod) => {
-      const gradePoints =
-        {
-          "A+": 5.0,
-          A: 5.0,
-          "A-": 4.5,
-          "B+": 4.0,
-          B: 3.5,
-          "B-": 3.0,
-          "C+": 2.5,
-          C: 2.0,
-          "D+": 1.5,
-          D: 1.0,
-          F: 0.0,
-        }[mod.grade.toUpperCase()] || 0;
-
+      const grade = mod.grade?.toUpperCase();
+      const gradePoints = gradePointsMap[grade] ?? 0;
       totalPoints += gradePoints * mod.units;
       totalUnits += mod.units;
     });
@@ -500,6 +415,7 @@ const Track = () => {
 
   const semData = calculateGPABySemester(module);
 
+  // Line gragh
   const lineChartData = {
     labels: semData.map((sem) => `Y${sem.year}S${sem.semester}`),
     datasets: [
@@ -509,8 +425,103 @@ const Track = () => {
     ],
   };
 
-  const scrollViewRef = useRef(null);
-  const formStartRef = useRef(null);
+  // Toggles the expanded/collapsed state of a category section
+  const toggleCategory = (category) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [category]: !prev[category],
+    }));
+  };
+
+  // Grouping modules by their categories and sort each category by completion
+  const groupedModules = Object.entries(
+    module.reduce((acc, mod) => {
+      const category = mod.category;
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(mod);
+      return acc;
+    }, {})
+  ).map(([title, data]) => ({
+    title,
+    data: data.sort((a, b) => a.completed - b.completed),
+  }));
+
+  // Finding out how much of each category is completed
+  const getCategoryStats = () => {
+    return groupedModules.map(({ title, data }) => {
+      const totalUnits = data.reduce((sum, mod) => sum + mod.units, 0);
+      const completedUnits = data
+        .filter((mod) => mod.completed)
+        .reduce((sum, mod) => sum + mod.units, 0);
+      const percentage =
+        totalUnits > 0 ? Math.round((completedUnits / totalUnits) * 100) : 0;
+
+      return {
+        title,
+        totalUnits,
+        completedUnits,
+        percentage,
+      };
+    });
+  };
+
+  // Sets ghost suggestion if there's a match
+  const handleCategoryChange = (text) => {
+    setCategory(text);
+
+    if (text.trim()) {
+      const match = availableCategories.find((cat) =>
+        cat.toLowerCase().startsWith(text.toLowerCase())
+      );
+      setGhostCategory(match || "");
+    } else {
+      setGhostCategory("");
+    }
+  };
+
+  // When user submits input, commit ghostCategory if it exists
+  const handleCategorySubmit = () => {
+    if (ghostCategory) {
+      setCategory(ghostCategory);
+      setGhostCategory("");
+    }
+  };
+
+  // Populates availableCategories with unique categories from modules whenever module data changes
+  useEffect(() => {
+    const categories = [
+      ...new Set(module.map((m) => m.category).filter(Boolean)),
+    ];
+    setAvailableCategories(categories);
+  }, [module]);
+
+  // When user input the module code, module name and credit will be auto-filled
+  const searchNUSMods = useCallback(
+    debounce(async (searchTerm) => {
+      if (!searchTerm.trim()) return;
+
+      setIsSearchingNUSMods(true);
+      try {
+        const response = await axios.get(
+          `https://api.nusmods.com/v2/2023-2024/modules/${searchTerm
+            .trim()
+            .toUpperCase()}.json`
+        );
+
+        if (response.data) {
+          const modData = response.data;
+          setCode(modData.moduleCode);
+          setName(modData.title);
+          setUnits(modData.moduleCredit.toString());
+        }
+      } catch (error) {
+        console.log("Module not found in NUS Mods API");
+      } finally {
+        setIsSearchingNUSMods(false);
+      }
+    }, 500),
+    []
+  );
 
   return (
     <KeyboardAwareScrollView

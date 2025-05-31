@@ -42,11 +42,13 @@ const Home = () => {
         return;
       }
 
+      // Fetch user data
       const res = await axios.post(`${BACKEND_URL}/userData`, {
         token,
       });
       setUserData(res.data.data);
 
+      // Check for existing profile picture in local storage
       const savedImage = await AsyncStorage.getItem("profilePic");
       if (savedImage) setProfilePic(savedImage);
     } catch (err) {
@@ -63,12 +65,14 @@ const Home = () => {
   }
 
   const pickImage = async () => {
+    // Request permissions
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       alert("Sorry, we need camera roll permissions!");
       return;
     }
 
+    // Launch image picker
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -106,6 +110,8 @@ const Home = () => {
     }
     try {
       const token = await AsyncStorage.getItem("token");
+
+      //Edit user data
       const res = await axios.post(`${BACKEND_URL}/updateUserData`, {
         token,
         ...formData,
@@ -144,7 +150,6 @@ const Home = () => {
             <Text style={styles.welcomeText}>Welcome back,</Text>
             <Text style={styles.name}>{userData.name}</Text>
           </View>
-
           <View style={styles.profileSection}>
             <Pressable onPress={pickImage} style={styles.profileImageContainer}>
               {profilePic ? (
