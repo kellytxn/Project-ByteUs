@@ -49,7 +49,9 @@ const Home = () => {
       setUserData(res.data.data);
 
       // Check for existing profile picture in local storage
-      const savedImage = await AsyncStorage.getItem("profilePic");
+      const savedImage = await AsyncStorage.getItem(
+        `profilePic_${res.data.data.email}`
+      );
       if (savedImage) setProfilePic(savedImage);
     } catch (err) {
       setError("Failed to fetch user data.");
@@ -60,7 +62,6 @@ const Home = () => {
 
   async function handleLogout() {
     await AsyncStorage.removeItem("token");
-    await AsyncStorage.removeItem("profilePic");
     router.replace("/");
   }
 
@@ -82,7 +83,10 @@ const Home = () => {
 
     if (!result.canceled) {
       setProfilePic(result.assets[0].uri);
-      await AsyncStorage.setItem("profilePic", result.assets[0].uri);
+      await AsyncStorage.setItem(
+        `profilePic_${userData.email}`,
+        result.assets[0].uri
+      );
     }
   };
 
