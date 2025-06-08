@@ -322,6 +322,15 @@ app.post("/updateUserData", async (req, res) => {
   }
 });
 
+app.post("/timetableGen", async (req, res) => {
+  const { token, modules, academicYear } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ status: "error", data: "Token is required" });
+  }
+  
+})
+
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server listening on port ${PORT}`);
