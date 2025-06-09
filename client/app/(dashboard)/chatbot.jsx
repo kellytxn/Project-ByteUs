@@ -158,6 +158,12 @@ const Chatbot = () => {
         F: 0.0,
       };
 
+      const completedUnits = userData.modules
+        .filter((mod) => mod.completed)
+        .reduce((sum, mod) => sum + mod.units, 0);
+
+      const unitsLeft = 160 - completedUnits;
+
       // Filter only completed, graded (not CS or CU), and not SU
       const completedModules = userData.modules.filter(
         (mod) =>
@@ -179,7 +185,7 @@ const Chatbot = () => {
       const cumulativeGpa =
         totalUnits > 0 ? (weightedGpaSum / totalUnits).toFixed(2) : "0.00";
 
-      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} out of 160 units completed. I am aiming for First Class Honours (CAP ≥ 4.5). What's the average GPA I need to achieve for my remaining units to reach that goal?
+      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} units completed. I have ${unitsLeft} units left. I am aiming for First Class Honours (CAP ≥ 4.5). What's the average GPA I need to achieve for my remaining units to reach that goal?
       The CAP is calculated using the following formula:
       CAP = (Σ (Grade Point × Module Units)) / (Σ Module Units)`;
       const userMessage = { text: prompt, sender: "user", id: Date.now() };
@@ -223,6 +229,12 @@ const Chatbot = () => {
         F: 0.0,
       };
 
+      const completedUnits = userData.modules
+        .filter((mod) => mod.completed)
+        .reduce((sum, mod) => sum + mod.units, 0);
+
+      const unitsLeft = 160 - completedUnits;
+
       // Filter only completed, graded (not CS or CU), and not SU
       const completedModules = userData.modules.filter(
         (mod) =>
@@ -244,7 +256,7 @@ const Chatbot = () => {
       const cumulativeGpa =
         totalUnits > 0 ? (weightedGpaSum / totalUnits).toFixed(2) : "0.00";
 
-      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} out of 160 units completed. I am aiming for Second Class Upper Honours (CAP ≥ 4.0). What's the average GPA I need to achieve for my remaining units to reach that goal?
+      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} units completed. I have ${unitsLeft} units left. I am aiming for Second Class Upper Honours (CAP ≥ 4.0). What's the average GPA I need to achieve for my remaining units to reach that goal?
       The CAP is calculated using the following formula:
       CAP = (Σ (Grade Point × Module Units)) / (Σ Module Units)`;
 
@@ -343,7 +355,7 @@ const Chatbot = () => {
       id: "2",
     },
     {
-      text: "How far am i from achieving second class honours?",
+      text: "How far am i from achieving second upper class honours?",
       action: handleGpaBlueprint2,
       id: "3",
     },
@@ -417,9 +429,10 @@ const styles = StyleSheet.create({
   },
   promptsContainer: {
     paddingVertical: 10,
+    maxWidth: "70%",
   },
   message: {
-    maxWidth: "80%",
+    maxWidth: "70%",
     padding: 10,
     borderRadius: 10,
     marginBottom: 10,
@@ -468,6 +481,7 @@ const styles = StyleSheet.create({
   promptText: {
     color: "#5E4A8A",
     fontWeight: "500",
+    maxWidth: "70%",
   },
   loadingContainer: {
     flex: 1,
