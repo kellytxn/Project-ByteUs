@@ -179,14 +179,9 @@ const Chatbot = () => {
       const cumulativeGpa =
         totalUnits > 0 ? (weightedGpaSum / totalUnits).toFixed(2) : "0.00";
 
-      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} out of 160 units completed. I am aiming for First Class Honours (CAP ≥ 4.5). 
-
-        What's the average GPA I need to achieve for my remaining units to reach that goal?
-        
-        The CAP is calculated using the following formula:
-        
-        CAP = (Σ (Grade Point × Module Units)) / (Σ Module Units)
-        `;
+      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} out of 160 units completed. I am aiming for First Class Honours (CAP ≥ 4.5). What's the average GPA I need to achieve for my remaining units to reach that goal?
+      The CAP is calculated using the following formula:
+      CAP = (Σ (Grade Point × Module Units)) / (Σ Module Units)`;
       const userMessage = { text: prompt, sender: "user", id: Date.now() };
       setMessages((prev) => [...prev, userMessage]);
 
@@ -249,14 +244,9 @@ const Chatbot = () => {
       const cumulativeGpa =
         totalUnits > 0 ? (weightedGpaSum / totalUnits).toFixed(2) : "0.00";
 
-      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} out of 160 units completed. I am aiming for Second Class Upper Honours (CAP ≥ 4.0). 
-
-        What's the average GPA I need to achieve for my remaining units to reach that goal?
-        
-        The CAP is calculated using the following formula:
-        
-        CAP = (Σ (Grade Point × Module Units)) / (Σ Module Units)
-        `;
+      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} out of 160 units completed. I am aiming for Second Class Upper Honours (CAP ≥ 4.0). What's the average GPA I need to achieve for my remaining units to reach that goal?
+      The CAP is calculated using the following formula:
+      CAP = (Σ (Grade Point × Module Units)) / (Σ Module Units)`;
 
       const userMessage = { text: prompt, sender: "user", id: Date.now() };
       setMessages((prev) => [...prev, userMessage]);
