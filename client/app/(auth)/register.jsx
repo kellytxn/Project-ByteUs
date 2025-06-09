@@ -16,6 +16,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BACKEND_URL } from "../../config";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { Dropdown } from "react-native-element-dropdown";
 
 const Register = () => {
   const [fullName, setFullName] = useState("");
@@ -27,6 +28,20 @@ const Register = () => {
   const [error, setError] = useState(null);
 
   const router = useRouter();
+
+  const yearOptions = [
+    { label: "First year", value: "1" },
+    { label: "Second year", value: "2" },
+    { label: "Third year", value: "3" },
+    { label: "Fourth year", value: "4" },
+    { label: "Fifth year", value: "5" },
+    { label: "Sixth year", value: "6" },
+  ];
+
+  const semesterOptions = [
+    { label: "First semester", value: "1" },
+    { label: "Second semester", value: "2" },
+  ];
 
   const validateEmail = (email) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -107,6 +122,7 @@ const Register = () => {
               value={fullName}
               onChangeText={setFullName}
               placeholder="Enter your full name"
+              placeholderTextColor="#999"
             />
 
             <Text style={styles.label}>Course</Text>
@@ -115,24 +131,37 @@ const Register = () => {
               value={course}
               onChangeText={setCourse}
               placeholder="Enter your course"
+              placeholderTextColor="#999"
             />
 
             <Text style={styles.label}>Year</Text>
-            <TextInput
-              style={styles.input}
+            <Dropdown
+              style={styles.dropdown}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+              inputSearchStyle={styles.inputSearchStyle}
+              data={yearOptions}
+              maxHeight={300}
+              labelField="label"
+              valueField="value"
+              placeholder="Select year"
               value={year}
-              onChangeText={setYear}
-              keyboardType="numeric"
-              placeholder="Enter your year"
+              onChange={(item) => setYear(item.value)}
             />
 
             <Text style={styles.label}>Semester</Text>
-            <TextInput
-              style={styles.input}
+            <Dropdown
+              style={styles.dropdown}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+              inputSearchStyle={styles.inputSearchStyle}
+              data={semesterOptions}
+              maxHeight={300}
+              labelField="label"
+              valueField="value"
+              placeholder="Select semester"
               value={semester}
-              onChangeText={setSemester}
-              keyboardType="numeric"
-              placeholder="Enter your semester"
+              onChange={(item) => setSemester(item.value)}
             />
 
             <Text style={styles.label}>Email</Text>
@@ -141,6 +170,7 @@ const Register = () => {
               value={email}
               onChangeText={setEmail}
               placeholder="Enter your email"
+              placeholderTextColor="#999"
             />
 
             <Text style={styles.label}>Password</Text>
@@ -150,6 +180,7 @@ const Register = () => {
               value={password}
               onChangeText={setPassword}
               placeholder="Enter a password"
+              placeholderTextColor="#999"
             />
 
             <Pressable
@@ -195,7 +226,7 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     marginLeft: 10,
     marginBottom: 6,
-    color: "#444",
+    color: "#999",
     fontWeight: "600",
   },
   input: {
@@ -242,5 +273,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     width: "100%",
+  },
+  dropdown: {
+    height: 50,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    marginBottom: 20,
+    backgroundColor: "#fff",
+    width: "100%",
+  },
+  placeholderStyle: {
+    fontSize: 16,
+    color: "#999",
+  },
+  selectedTextStyle: {
+    fontSize: 16,
+    color: "#444",
   },
 });

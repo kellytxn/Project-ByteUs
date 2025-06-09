@@ -834,7 +834,6 @@ const Track = () => {
                           ]}
                         >
                           <View style={styles.categoryHeaderContent}>
-                            {/* Category Title */}
                             <View>
                               <Text
                                 style={styles.header}
@@ -848,7 +847,6 @@ const Track = () => {
                               </Text>
                             </View>
 
-                            {/* Stats & Progress Bar */}
                             <View style={styles.progressBarContainer}>
                               <View
                                 style={[
@@ -1012,8 +1010,15 @@ const Track = () => {
                                   elevation: 2,
                                 }}
                               >
-                                <Text style={{ fontWeight: "bold" }}>
+                                <Text
+                                  numberOfLines={1}
+                                  ellipsizeMode="tail"
+                                  style={{ fontWeight: "bold" }}
+                                >
                                   {mod.code} - {mod.name}
+                                </Text>
+                                <Text>
+                                  Grade: {mod.grade} | MCs: {mod.units}
                                 </Text>
                               </Pressable>
                             );
@@ -1050,7 +1055,11 @@ const Track = () => {
                               }}
                             >
                               <View style={{ flex: 1 }}>
-                                <Text style={{ fontWeight: "bold" }}>
+                                <Text
+                                  numberOfLines={1}
+                                  ellipsizeMode="tail"
+                                  style={{ fontWeight: "bold" }}
+                                >
                                   {mod.code} - {mod.name}
                                 </Text>
                                 <Text>
@@ -1061,16 +1070,20 @@ const Track = () => {
                                 onPress={() => removeSelectedModule(mod._id)}
                                 style={({ pressed }) => [
                                   {
-                                    backgroundColor: "#D3D4D8",
+                                    backgroundColor: "#D4D5D8",
                                     paddingVertical: 3,
                                     paddingHorizontal: 12,
                                     borderRadius: 8,
+                                    marginLeft: 10,
                                   },
                                   pressed && { opacity: 0.8 },
                                 ]}
                               >
                                 <Text
-                                  style={{ color: "white", fontWeight: "bold" }}
+                                  style={{
+                                    color: "#D32F2F",
+                                    fontWeight: "bold",
+                                  }}
                                 >
                                   Remove
                                 </Text>
