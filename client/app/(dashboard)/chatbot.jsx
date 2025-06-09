@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "white",
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 15,
