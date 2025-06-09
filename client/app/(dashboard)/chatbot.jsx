@@ -140,6 +140,147 @@ const Chatbot = () => {
     }
   };
 
+  const handleGpaBlueprint = async () => {
+    try {
+      if (!userData) throw new Error("User data or modules not available");
+
+      const gradePointMap = {
+        "A+": 5.0,
+        A: 5.0,
+        "A-": 4.5,
+        "B+": 4.0,
+        B: 3.5,
+        "B-": 3.0,
+        "C+": 2.5,
+        C: 2.0,
+        "D+": 1.5,
+        D: 1.0,
+        F: 0.0,
+      };
+
+      // Filter only completed, graded (not CS or CU), and not SU
+      const completedModules = userData.modules.filter(
+        (mod) =>
+          mod.completed && mod.grade !== "CS" && mod.grade !== "CU" && !mod.isSU
+      );
+
+      // Calculate total units and weighted GPA sum
+      let totalUnits = 0;
+      let weightedGpaSum = 0;
+
+      completedModules.forEach((mod) => {
+        const gradePoint = gradePointMap[mod.grade];
+        if (gradePoint !== undefined) {
+          totalUnits += mod.units;
+          weightedGpaSum += gradePoint * mod.units;
+        }
+      });
+
+      const cumulativeGpa =
+        totalUnits > 0 ? (weightedGpaSum / totalUnits).toFixed(2) : "0.00";
+
+      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} out of 160 units completed. I am aiming for First Class Honours (CAP ≥ 4.5). 
+
+        What's the average GPA I need to achieve for my remaining units to reach that goal?
+        
+        The CAP is calculated using the following formula:
+        
+        CAP = (Σ (Grade Point × Module Units)) / (Σ Module Units)
+        `;
+      const userMessage = { text: prompt, sender: "user", id: Date.now() };
+      setMessages((prev) => [...prev, userMessage]);
+
+      const reply = await fetchGeminiResponse(prompt);
+      const geminiMessage = {
+        text: reply,
+        sender: "gemini",
+        id: Date.now() + 1,
+      };
+      setMessages((prev) => [...prev, geminiMessage]);
+    } catch (err) {
+      console.error("Error generating GPA blueprint:", err);
+      const errorMessage = {
+        text: userData
+          ? "Error calculating GPA blueprint."
+          : "Please complete your profile and modules to get a GPA blueprint.",
+        sender: "gemini",
+        id: Date.now(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    }
+  };
+
+  const handleGpaBlueprint2 = async () => {
+    try {
+      if (!userData) throw new Error("User data or modules not available");
+
+      const gradePointMap = {
+        "A+": 5.0,
+        A: 5.0,
+        "A-": 4.5,
+        "B+": 4.0,
+        B: 3.5,
+        "B-": 3.0,
+        "C+": 2.5,
+        C: 2.0,
+        "D+": 1.5,
+        D: 1.0,
+        F: 0.0,
+      };
+
+      // Filter only completed, graded (not CS or CU), and not SU
+      const completedModules = userData.modules.filter(
+        (mod) =>
+          mod.completed && mod.grade !== "CS" && mod.grade !== "CU" && !mod.isSU
+      );
+
+      // Calculate total units and weighted GPA sum
+      let totalUnits = 0;
+      let weightedGpaSum = 0;
+
+      completedModules.forEach((mod) => {
+        const gradePoint = gradePointMap[mod.grade];
+        if (gradePoint !== undefined) {
+          totalUnits += mod.units;
+          weightedGpaSum += gradePoint * mod.units;
+        }
+      });
+
+      const cumulativeGpa =
+        totalUnits > 0 ? (weightedGpaSum / totalUnits).toFixed(2) : "0.00";
+
+      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} out of 160 units completed. I am aiming for Second Class Upper Honours (CAP ≥ 4.0). 
+
+        What's the average GPA I need to achieve for my remaining units to reach that goal?
+        
+        The CAP is calculated using the following formula:
+        
+        CAP = (Σ (Grade Point × Module Units)) / (Σ Module Units)
+        `;
+
+      const userMessage = { text: prompt, sender: "user", id: Date.now() };
+      setMessages((prev) => [...prev, userMessage]);
+
+      const reply = await fetchGeminiResponse(prompt);
+      const geminiMessage = {
+        text: reply,
+        sender: "gemini",
+        id: Date.now() + 1,
+      };
+      setMessages((prev) => [...prev, geminiMessage]);
+    } catch (err) {
+      console.error("Error generating GPA blueprint:", err);
+      const errorMessage = {
+        text: userData
+          ? "Error calculating GPA blueprint."
+          : "Please complete your profile and modules to get a GPA blueprint.",
+        sender: "gemini",
+        id: Date.now(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    }
+  };
+
   const handleButtonClick = async () => {
     if (!msg.trim()) return;
 
@@ -207,35 +348,13 @@ const Chatbot = () => {
       id: "1",
     },
     {
-      text: "How to be productive?",
-      action: async () => {
-        const prompt = "How to be productive?";
-        const userMessage = { text: prompt, sender: "user", id: Date.now() };
-        setMessages((prev) => [...prev, userMessage]);
-        const reply = await fetchGeminiResponse(prompt);
-        const geminiMessage = {
-          text: reply,
-          sender: "gemini",
-          id: Date.now() + 1,
-        };
-        setMessages((prev) => [...prev, geminiMessage]);
-      },
+      text: "How far am i from achieving first class honours?",
+      action: handleGpaBlueprint,
       id: "2",
     },
     {
-      text: "Help me prepare for finals",
-      action: async () => {
-        const prompt = "Help me prepare for finals";
-        const userMessage = { text: prompt, sender: "user", id: Date.now() };
-        setMessages((prev) => [...prev, userMessage]);
-        const reply = await fetchGeminiResponse(prompt);
-        const geminiMessage = {
-          text: reply,
-          sender: "gemini",
-          id: Date.now() + 1,
-        };
-        setMessages((prev) => [...prev, geminiMessage]);
-      },
+      text: "How far am i from achieving second class honours?",
+      action: handleGpaBlueprint2,
       id: "3",
     },
   ];
@@ -284,7 +403,7 @@ const Chatbot = () => {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Enter Your Query"
+            placeholder="Enter your query"
             value={msg}
             onChangeText={messageSave}
             placeholderTextColor="#444"
