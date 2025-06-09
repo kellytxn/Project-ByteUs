@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, FontAwesome5 } from "@expo/vector-icons";
 
 export default function DashboardLayout() {
   return (
@@ -51,6 +51,20 @@ export default function DashboardLayout() {
             <Ionicons
               size={24}
               name="stats-chart"
+              color={focused ? "#DFB6CF" : "#FFF"}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="chatbot"
+        options={{
+          title: "Chatbot",
+          tabBarIcon: ({ focused }) => (
+            <FontAwesome5
+              size={24}
+              name="robot"
               color={focused ? "#DFB6CF" : "#FFF"}
             />
           ),
