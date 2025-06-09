@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -17,7 +17,6 @@ import { BACKEND_URL } from "../../config";
 
 const GEMINI_API_KEY = "AIzaSyBryT1JtHupeokQTfLZN-4ECCTo20kZEt4";
 
-//Bolding bold text from Geminu
 const renderFormattedText = (text) => {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
 
@@ -39,7 +38,8 @@ const Chatbot = () => {
   const [messages, setMessages] = useState([]);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showPrompts, setShowPrompts] = useState(true);
+  const [welcomeMessage, setWelcomeMessage] = useState(null);
+  const flatListRef = useRef(null);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -56,24 +56,23 @@ const Chatbot = () => {
 
         if (data.status === "ok") {
           setUserData(data.data);
-          const welcomeMessage = {
+          const welcomeMsg = {
             text: `Hello ${
               data.data?.name || "there"
             }! I'm your academic assistant. How can I help you today? Here are some questions you might want to ask:`,
             sender: "gemini",
           };
-          setMessages([welcomeMessage]);
+          setWelcomeMessage(welcomeMsg);
         } else {
           throw new Error(data.data || "Failed to fetch user data");
         }
       } catch (error) {
         console.error("Error fetching user data:", error);
-        setMessages([
-          {
-            text: "Hello there! I'm your academic assistant. How can I help you today? Here are some questions you might want to ask:",
-            sender: "gemini",
-          },
-        ]);
+        const welcomeMsg = {
+          text: "Hello there! I'm your academic assistant. How can I help you today? Here are some questions you might want to ask:",
+          sender: "gemini",
+        };
+        setWelcomeMessage(welcomeMsg);
       } finally {
         setLoading(false);
       }
@@ -81,6 +80,14 @@ const Chatbot = () => {
 
     fetchUserData();
   }, []);
+
+  useEffect(() => {
+    if (flatListRef.current && messages.length > 0) {
+      setTimeout(() => {
+        flatListRef.current.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages]);
 
   const fetchGeminiResponse = async (prompt) => {
     try {
@@ -105,50 +112,57 @@ const Chatbot = () => {
   };
 
   const handleModuleSuggestion = async () => {
-    setShowPrompts(false);
     try {
       if (!userData) throw new Error("User data not available");
 
       const prompt = `I'm studying ${userData.course} in NUS. Recommend me some common modules to take in year ${userData.year} semester ${userData.semester}. Remember to provide the module's name and code!`;
 
-      const userMessage = { text: prompt, sender: "user" };
-      setMessages((prev) => [userMessage, ...prev]);
-      setMsg("");
+      const userMessage = { text: prompt, sender: "user", id: Date.now() };
+      setMessages((prev) => [...prev, userMessage]);
 
       const reply = await fetchGeminiResponse(prompt);
-      const geminiMessage = { text: reply, sender: "gemini" };
-      setMessages((prev) => [geminiMessage, userMessage, ...prev.slice(1)]);
+      const geminiMessage = {
+        text: reply,
+        sender: "gemini",
+        id: Date.now() + 1,
+      };
+      setMessages((prev) => [...prev, geminiMessage]);
     } catch (err) {
       console.error("Error getting modules:", err);
-      setMessages((prev) => [
-        {
-          text: userData
-            ? "Error fetching academic info"
-            : "Please make sure your profile is complete to get module suggestions",
-          sender: "gemini",
-        },
-        ...prev,
-      ]);
+      const errorMessage = {
+        text: userData
+          ? "Error fetching academic info"
+          : "Please make sure your profile is complete to get module suggestions",
+        sender: "gemini",
+        id: Date.now(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     }
   };
 
   const handleButtonClick = async () => {
     if (!msg.trim()) return;
 
-    setShowPrompts(false);
-
-    const userMessage = { text: msg, sender: "user" };
-    setMessages((prevMessages) => [userMessage, ...prevMessages]);
+    const userMessage = { text: msg, sender: "user", id: Date.now() };
+    setMessages((prevMessages) => [...prevMessages, userMessage]);
     setMsg("");
 
     try {
       const reply = await fetchGeminiResponse(msg);
-      const geminiMessage = { text: reply, sender: "gemini" };
-      setMessages((prevMessages) => [geminiMessage, ...prevMessages]);
+      const geminiMessage = {
+        text: reply,
+        sender: "gemini",
+        id: Date.now() + 1,
+      };
+      setMessages((prevMessages) => [...prevMessages, geminiMessage]);
     } catch (error) {
       console.error("Error:", error);
-      const errorMessage = { text: "Error occurred", sender: "gemini" };
-      setMessages((prevMessages) => [errorMessage, ...prevMessages]);
+      const errorMessage = {
+        text: "Error occurred",
+        sender: "gemini",
+        id: Date.now(),
+      };
+      setMessages((prevMessages) => [...prevMessages, errorMessage]);
     }
   };
 
@@ -156,15 +170,7 @@ const Chatbot = () => {
     setMsg(text);
   };
 
-  const renderItem = ({ item }) => {
-    if (item.sender === "prompt") {
-      return (
-        <TouchableOpacity style={styles.promptButton} onPress={item.action}>
-          <Text style={styles.promptText}>{item.text}</Text>
-        </TouchableOpacity>
-      );
-    }
-
+  const renderMessageItem = ({ item }) => {
     return (
       <View
         style={[
@@ -186,49 +192,59 @@ const Chatbot = () => {
     );
   };
 
+  const renderPromptItem = ({ item }) => {
+    return (
+      <TouchableOpacity style={styles.promptButton} onPress={item.action}>
+        <Text style={styles.promptText}>{item.text}</Text>
+      </TouchableOpacity>
+    );
+  };
+
   const prompts = [
     {
       text: "What modules should I take this semester?",
       action: handleModuleSuggestion,
-      sender: "prompt",
+      id: "1",
     },
     {
       text: "How to be productive?",
       action: async () => {
-        setShowPrompts(false);
         const prompt = "How to be productive?";
-        const userMessage = { text: prompt, sender: "user" };
-        setMessages((prev) => [userMessage, ...prev]);
+        const userMessage = { text: prompt, sender: "user", id: Date.now() };
+        setMessages((prev) => [...prev, userMessage]);
         const reply = await fetchGeminiResponse(prompt);
-        const geminiMessage = { text: reply, sender: "gemini" };
-        setMessages((prev) => [geminiMessage, userMessage, ...prev.slice(1)]);
+        const geminiMessage = {
+          text: reply,
+          sender: "gemini",
+          id: Date.now() + 1,
+        };
+        setMessages((prev) => [...prev, geminiMessage]);
       },
-      sender: "prompt",
+      id: "2",
     },
     {
       text: "Help me prepare for finals",
       action: async () => {
-        setShowPrompts(false);
         const prompt = "Help me prepare for finals";
-        const userMessage = { text: prompt, sender: "user" };
-        setMessages((prev) => [userMessage, ...prev]);
+        const userMessage = { text: prompt, sender: "user", id: Date.now() };
+        setMessages((prev) => [...prev, userMessage]);
         const reply = await fetchGeminiResponse(prompt);
-        const geminiMessage = { text: reply, sender: "gemini" };
-        setMessages((prev) => [geminiMessage, userMessage, ...prev.slice(1)]);
+        const geminiMessage = {
+          text: reply,
+          sender: "gemini",
+          id: Date.now() + 1,
+        };
+        setMessages((prev) => [...prev, geminiMessage]);
       },
-      sender: "prompt",
+      id: "3",
     },
   ];
 
   if (loading) {
     return (
-      <View
-        style={[
-          styles.container,
-          { justifyContent: "center", alignItems: "center" },
-        ]}
-      >
-        <ActivityIndicator size="large" color="#9C7FC5" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#AE96C7" />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
@@ -241,16 +257,34 @@ const Chatbot = () => {
     >
       <SafeAreaView style={styles.container}>
         <FlatList
-          data={[...(showPrompts ? prompts : []), ...messages]}
-          renderItem={renderItem}
-          keyExtractor={(item, index) => index.toString()}
+          ref={flatListRef}
+          data={messages}
+          renderItem={renderMessageItem}
+          keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.messagesContainer}
-          inverted
+          ListHeaderComponent={
+            <>
+              {welcomeMessage && (
+                <View style={[styles.message, styles.geminiMessage]}>
+                  <Text style={[styles.messageText, styles.geminiMessageText]}>
+                    {renderFormattedText(welcomeMessage.text)}
+                  </Text>
+                </View>
+              )}
+              <FlatList
+                data={prompts}
+                renderItem={renderPromptItem}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+                contentContainerStyle={styles.promptsContainer}
+              />
+            </>
+          }
         />
-        <View style={styles.inputView}>
+        <View style={styles.inputContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Enter Your Query...."
+            placeholder="Enter Your Query"
             value={msg}
             onChangeText={messageSave}
             placeholderTextColor="#444"
@@ -268,7 +302,13 @@ export default Chatbot;
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#EBE9E3" },
-  messagesContainer: { padding: 10 },
+  messagesContainer: {
+    padding: 10,
+    paddingBottom: 80,
+  },
+  promptsContainer: {
+    paddingVertical: 10,
+  },
   message: {
     maxWidth: "80%",
     padding: 10,
@@ -286,16 +326,15 @@ const styles = StyleSheet.create({
   messageText: { color: "white" },
   userMessageText: { color: "white" },
   geminiMessageText: { color: "black" },
-  inputView: {
+  inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     padding: 15,
     backgroundColor: "transparent",
   },
   input: {
     flex: 1,
-    backgroundColor: "white",
+    backgroundColor: "#f0f0f0",
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 15,
@@ -316,10 +355,20 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginVertical: 5,
     alignSelf: "flex-start",
-    maxWidth: "80%",
   },
   promptText: {
     color: "#5E4A8A",
     fontWeight: "500",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingTop: 20,
+    backgroundColor: "#EBE9E3",
+  },
+  loadingText: {
+    marginTop: 10,
+    color: "#555",
   },
 });
