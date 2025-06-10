@@ -1,0 +1,1 @@
+const MUTATION_RATE = 0.1;
