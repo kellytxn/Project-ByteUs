@@ -8,7 +8,7 @@ import {
   View,
   SafeAreaView,
 } from "react-native";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import Icon from "react-native-vector-icons/FontAwesome";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -16,13 +16,15 @@ import { BACKEND_URL } from "../../config";
 
 const Timetable = () => {
   const [allMods, setAllMods] = useState([]);
-  const [filteredMod, setFilteredMod] = useState([]); //pick 1 mod
+  const [filteredMods, setFilteredMods] = useState([]); //mods displayed in dropdown box
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMods, setSelectedMods] = useState([]); //all picked mods
   const [showDropdown, setShowDropdown] = useState(false);
   const [academicYear, setAcademicYear] = useState("2023-2024"); //use ay2023-2024 for now
+  const [userData, setUserData] = useState(null);
+  const [userPassedMods, setUserPassedMods] = useState([]);
 
-  async function getAllMods() {
+  async function getModsData() {
     try {
       const response = await axios.get(
         `https://api.nusmods.com/v2/${academicYear}/moduleList.json`
@@ -38,17 +40,73 @@ const Timetable = () => {
     }
   }
 
-  //pick 1 mod
-  const pickMod = (query) => {
+  //fetch user data
+  async function getUserData() {
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      if (!token) {
+        setError("No token found.");
+        return;
+      }
+
+      const res = await axios.post(`${BACKEND_URL}/userData`, {
+        token,
+      });
+      const userInfo = res.data.data;
+      setUserData(userInfo);
+
+      const passedMods = userInfo.modules
+      .filter(mod => mod.completed && !["F", "CU"].includes(mod.grade))
+      .map(mod => mod.code);
+      setUserPassedMods(passedMods);
+    } catch (err) {
+      console.error("Failed to fetch user data:", err);
+    }
+  }
+
+  //display mods in dropdown box
+  const shownMods = (query) => {
     setSearchQuery(query);
     setShowDropdown(true);
 
-    const filtered = allMods.filter(
-      (modData) =>
-        modData.moduleCode.toUpperCase().includes(query.toUpperCase()) ||
-        modData.title.toUpperCase().includes(query.toUpperCase())
-    );
-    setFilteredMod(filtered);
+    const filtered = allMods.filter((modData) => {
+      const matchQuery = modData.moduleCode.toUpperCase().includes(query.toUpperCase()) ||
+      modData.title.toUpperCase().includes(query.toUpperCase());
+      
+      const matchSem = modData.semesters.toString().includes(userData.semester.toString());
+      
+      //check if completed prereqs & not completed preclusions
+      const checkPastMods = async () => {
+        try {
+          const response = await axios.get(
+            `https://api.nusmods.com/v2/${academicYear}/modules/${modData.moduleCode.toUpperCase()}.json`
+          );
+          
+          if (response.data) {
+            const modInfo = response.data;
+            if (modInfo.prerequisite && modInfo.preclusion) {
+              return userPassedMods.some((passedMod) => modInfo.prerequisite.includes(passedMod)) &&
+              userPassedMods.some((passedMod) => !modInfo.preclusion.includes(passedMod));
+            }
+            if (modInfo.preclusion) {
+              return userPassedMods.some((passedMod) => !modInfo.preclusion.includes(passedMod));
+            }
+            if (modInfo.prerequisite) {
+              return userPassedMods.some((passedMod) => modInfo.prerequisite.includes(passedMod));
+            }
+            return true;
+          }
+        } catch (error) {
+          Alert.alert("Error", "Failed to load modules");
+          console.error("Module fetch error:", error);
+        }
+      }
+
+      return matchQuery && matchSem && checkPastMods;
+    });
+    
+    setFilteredMods(filtered);
   };
 
   //edit list of picked mods
@@ -75,6 +133,7 @@ const Timetable = () => {
         await axios.post(`${BACKEND_URL}/timetableGen`, {
           token,
           modules: selectedMods,
+          semester: userData.semester.toString(),
           academicYear: academicYear,
         });
       } else {
@@ -87,7 +146,11 @@ const Timetable = () => {
   };
 
   useEffect(() => {
-    getAllMods();
+    getModsData();
+  }, []);
+
+  useEffect(() => {
+    getUserData();
   }, []);
 
   const DropdownMods = ({ item }) => (
@@ -120,7 +183,7 @@ const Timetable = () => {
               placeholder="Search module code or name"
               placeholderTextColor={"#707070"}
               value={searchQuery}
-              onChangeText={pickMod}
+              onChangeText={shownMods}
               onFocus={() => searchQuery.length > 0 && setShowDropdown(true)}
             />
           </View>
@@ -128,9 +191,9 @@ const Timetable = () => {
 
         {showDropdown && (
           <View style={styles.dropdown}>
-            {filteredMod.length > 0 ? (
+            {filteredMods.length > 0 ? (
               <FlatList
-                data={filteredMod}
+                data={filteredMods}
                 keyExtractor={(item) => item.moduleCode}
                 renderItem={({ item }) => <DropdownMods item={item} />}
                 keyboardShouldPersistTaps="always"
