@@ -13,24 +13,107 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
 import { BACKEND_URL } from "../../config";
 
 const GEMINI_API_KEY = "AIzaSyBryT1JtHupeokQTfLZN-4ECCTo20kZEt4";
 
 const renderFormattedText = (text) => {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  // First split by lines to handle bullet points
+  const lines = text.split("\n");
+  const result = [];
 
-  return parts.map((part, index) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return (
-        <Text key={index} style={{ fontWeight: "bold", color: "black" }}>
-          {part.slice(2, -2)}
+  lines.forEach((line, lineIndex) => {
+    // Skip empty lines (they'll create natural spacing)
+    if (line.trim() === "") {
+      result.push(<Text key={`empty-${lineIndex}`}>{"\n"}</Text>);
+      return;
+    }
+
+    // Handle bullet points (lines starting with * followed by space)
+    if (/^\*\s/.test(line)) {
+      result.push(
+        <Text key={`bullet-${lineIndex}`} style={{ marginLeft: 10 }}>
+          {"\n• "}
+          {line.substring(2).trim()}
         </Text>
       );
-    } else {
-      return <Text key={index}>{part}</Text>;
+      return;
     }
+
+    // Process formatting within the line
+    const parts = [];
+    let remainingText = line;
+
+    // Process all formatting tags in the line
+    while (remainingText.length > 0) {
+      // Check for ***bold italic***
+      const boldItalicMatch = remainingText.match(/^\*\*\*([^*]+)\*\*\*/);
+      if (boldItalicMatch) {
+        parts.push(
+          <Text
+            key={`bi-${lineIndex}-${parts.length}`}
+            style={{ fontWeight: "bold", fontStyle: "italic" }}
+          >
+            {boldItalicMatch[1]}
+          </Text>
+        );
+        remainingText = remainingText.substring(boldItalicMatch[0].length);
+        continue;
+      }
+
+      // Check for **bold**
+      const boldMatch = remainingText.match(/^\*\*([^*]+)\*\*/);
+      if (boldMatch) {
+        parts.push(
+          <Text
+            key={`b-${lineIndex}-${parts.length}`}
+            style={{ fontWeight: "bold" }}
+          >
+            {boldMatch[1]}
+          </Text>
+        );
+        remainingText = remainingText.substring(boldMatch[0].length);
+        continue;
+      }
+
+      // Check for *italic*
+      const italicMatch = remainingText.match(/^\*([^*]+)\*/);
+      if (italicMatch) {
+        parts.push(
+          <Text
+            key={`i-${lineIndex}-${parts.length}`}
+            style={{ fontStyle: "italic" }}
+          >
+            {italicMatch[1]}
+          </Text>
+        );
+        remainingText = remainingText.substring(italicMatch[0].length);
+        continue;
+      }
+
+      // Add regular text
+      const nextFormat = remainingText.search(/\*\*\*|\*\*|\*/);
+      if (nextFormat >= 0) {
+        parts.push(
+          <Text key={`t-${lineIndex}-${parts.length}`}>
+            {remainingText.substring(0, nextFormat)}
+          </Text>
+        );
+        remainingText = remainingText.substring(nextFormat);
+      } else {
+        parts.push(
+          <Text key={`t-${lineIndex}-${parts.length}`}>{remainingText}</Text>
+        );
+        remainingText = "";
+      }
+    }
+
+    result.push(<Text key={`line-${lineIndex}`}>{parts}</Text>);
   });
+
+  return result;
 };
 
 const Chatbot = () => {
@@ -41,45 +124,43 @@ const Chatbot = () => {
   const [welcomeMessage, setWelcomeMessage] = useState(null);
   const flatListRef = useRef(null);
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const token = await AsyncStorage.getItem("token");
-        if (!token) throw new Error("No token found");
+  useFocusEffect(
+    useCallback(() => {
+      const fetchUserData = async () => {
+        try {
+          const token = await AsyncStorage.getItem("token");
+          if (!token) throw new Error("No token found");
 
-        const response = await fetch(`${BACKEND_URL}/userData`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
-        });
-        const data = await response.json();
+          const response = await fetch(`${BACKEND_URL}/userData`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          });
 
-        if (data.status === "ok") {
-          setUserData(data.data);
-          const welcomeMsg = {
-            text: `Hello ${
-              data.data?.name || "there"
-            }! I'm your academic assistant. How can I help you today? Here are some questions you might want to ask:`,
-            sender: "gemini",
-          };
-          setWelcomeMessage(welcomeMsg);
-        } else {
-          throw new Error(data.data || "Failed to fetch user data");
+          const data = await response.json();
+
+          if (data.status === "ok") {
+            setUserData(data.data);
+            const welcomeMsg = {
+              text: `Hello ${
+                data.data?.name || "there"
+              }! I'm your academic assistant. How can I help you today?`,
+              sender: "gemini",
+            };
+            setWelcomeMessage(welcomeMsg);
+          } else {
+            throw new Error(data.data || "Failed to fetch user data");
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+        } finally {
+          setLoading(false);
         }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-        const welcomeMsg = {
-          text: "Hello there! I'm your academic assistant. How can I help you today? Here are some questions you might want to ask:",
-          sender: "gemini",
-        };
-        setWelcomeMessage(welcomeMsg);
-      } finally {
-        setLoading(false);
-      }
-    };
+      };
 
-    fetchUserData();
-  }, []);
+      fetchUserData();
+    }, [])
+  );
 
   useEffect(() => {
     if (flatListRef.current && messages.length > 0) {
@@ -185,12 +266,9 @@ const Chatbot = () => {
       const cumulativeGpa =
         totalUnits > 0 ? (weightedGpaSum / totalUnits).toFixed(2) : "0.00";
 
-      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} units completed. I have ${unitsLeft} units left. I am aiming for First Class Honours (CAP ≥ 4.5). What's the average GPA I need to achieve for my remaining units to reach that goal?
-      The CAP is calculated using the following formula:
-      CAP = (Σ (Grade Point × Module Units)) / (Σ Module Units)`;
+      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} units completed. I have ${unitsLeft} units left. I am aiming for First Class Honours (CAP ≥ 4.5). What's the average GPA I need to achieve for my remaining units to reach that goal? The CAP is calculated using the following formula: CAP = (Σ (Grade Point × Module Units)) / (Σ Module Units)`;
       const userMessage = { text: prompt, sender: "user", id: Date.now() };
       setMessages((prev) => [...prev, userMessage]);
-
       const reply = await fetchGeminiResponse(prompt);
       const geminiMessage = {
         text: reply,
@@ -256,10 +334,7 @@ const Chatbot = () => {
       const cumulativeGpa =
         totalUnits > 0 ? (weightedGpaSum / totalUnits).toFixed(2) : "0.00";
 
-      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} units completed. I have ${unitsLeft} units left. I am aiming for Second Class Upper Honours (CAP ≥ 4.0). What's the average GPA I need to achieve for my remaining units to reach that goal?
-      The CAP is calculated using the following formula:
-      CAP = (Σ (Grade Point × Module Units)) / (Σ Module Units)`;
-
+      const prompt = `I am currently a Year ${userData.year}, Semester ${userData.semester} student at NUS. My cumulative GPA (CAP) is ${cumulativeGpa}, based on ${totalUnits} units completed. I have ${unitsLeft} units left. I am aiming for Second Class Upper Honours (CAP ≥ 4.0). What's the average GPA I need to achieve for my remaining units to reach that goal? The CAP is calculated using the following formula: CAP = (Σ (Grade Point × Module Units)) / (Σ Module Units)`;
       const userMessage = { text: prompt, sender: "user", id: Date.now() };
       setMessages((prev) => [...prev, userMessage]);
 
