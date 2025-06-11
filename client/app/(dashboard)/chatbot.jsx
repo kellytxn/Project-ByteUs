@@ -138,9 +138,10 @@ const Chatbot = () => {
             const welcomeMsg = {
               text: `Hello ${
                 data.data?.name || "there"
-              }! I'm your academic assistant. How can I help you today?`,
+              }! I'm your academic assistant — here to support you on your learning journey.\n\nHere are some common questions you might have — feel free to tap on any of them to get started!`,
               sender: "gemini",
             };
+
             setWelcomeMessage(welcomeMsg);
           } else {
             throw new Error(data.data || "Failed to fetch user data");
