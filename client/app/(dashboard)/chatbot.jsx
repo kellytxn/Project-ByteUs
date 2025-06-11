@@ -19,19 +19,18 @@ import { BACKEND_URL } from "../../config";
 
 const GEMINI_API_KEY = "AIzaSyBryT1JtHupeokQTfLZN-4ECCTo20kZEt4";
 
+//Handle formatting
 const renderFormattedText = (text) => {
-  // First split by lines to handle bullet points
   const lines = text.split("\n");
   const result = [];
 
   lines.forEach((line, lineIndex) => {
-    // Skip empty lines (they'll create natural spacing)
     if (line.trim() === "") {
       result.push(<Text key={`empty-${lineIndex}`}>{"\n"}</Text>);
       return;
     }
 
-    // Handle bullet points (lines starting with * followed by space)
+    //Handle bullet points (lines starting with * followed by space)
     if (/^\*\s/.test(line)) {
       result.push(
         <Text key={`bullet-${lineIndex}`} style={{ marginLeft: 10 }}>
@@ -41,14 +40,10 @@ const renderFormattedText = (text) => {
       );
       return;
     }
-
-    // Process formatting within the line
     const parts = [];
     let remainingText = line;
-
-    // Process all formatting tags in the line
     while (remainingText.length > 0) {
-      // Check for ***bold italic***
+      //Check for ***bold italic***
       const boldItalicMatch = remainingText.match(/^\*\*\*([^*]+)\*\*\*/);
       if (boldItalicMatch) {
         parts.push(
@@ -63,7 +58,7 @@ const renderFormattedText = (text) => {
         continue;
       }
 
-      // Check for **bold**
+      //Check for **bold**
       const boldMatch = remainingText.match(/^\*\*([^*]+)\*\*/);
       if (boldMatch) {
         parts.push(
@@ -78,7 +73,7 @@ const renderFormattedText = (text) => {
         continue;
       }
 
-      // Check for *italic*
+      //Check for *italic*
       const italicMatch = remainingText.match(/^\*([^*]+)\*/);
       if (italicMatch) {
         parts.push(
@@ -93,7 +88,6 @@ const renderFormattedText = (text) => {
         continue;
       }
 
-      // Add regular text
       const nextFormat = remainingText.search(/\*\*\*|\*\*|\*/);
       if (nextFormat >= 0) {
         parts.push(
