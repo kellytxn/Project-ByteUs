@@ -5,6 +5,8 @@ const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const nusmods = require('./nusmods');
+const ga = require("./timetableGA");
 
 const app = express();
 
@@ -323,13 +325,64 @@ app.post("/updateUserData", async (req, res) => {
 });
 
 app.post("/timetableGen", async (req, res) => {
-  const { token, modules, academicYear } = req.body;
+  const { token, modCodes, semester, acadYear, preferences } = req.body;
 
   if (!token) {
     return res.status(400).json({ status: "error", data: "Token is required" });
   }
-  
-})
+
+  try {
+    jwt.verify(token, JWT_SECRET);
+
+    const modsData = {};
+    for (const mod of modCodes) {
+      modsData[mod] = await nusmods.fetchModTimetable(acadYear, mod, semester);
+    }
+ 
+    let population = ga.generatePopulation(modCodes, modsData);
+
+    let generations = 100;
+    for (let gen = 0; gen < generations; gen++) {
+      population = ga.evolve(
+        population,
+        preferences,
+        modsData
+      );
+    }
+
+    let bestTimetable = null;
+    let bestScore = -Infinity;
+    for (const timetable of population) {
+      const score = ga.calcScore(preferences, timetable);
+      if (score > bestScore) {
+        bestTimetable = timetable;
+        bestScore = score;
+      }
+    }
+    
+    if (!bestTimetable || bestScore === -Infinity) {
+      return res.status(404).json({
+        status: "error",
+        data: "No valid timetable found with given constraints"
+      });
+    }
+
+    return res.status(200).json({
+      status: "ok",
+      data: bestTimetable
+    });
+  } catch (error) {
+    console.error("Update user error:", error);
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ status: "error", data: "Invalid token" });
+    }
+    return res.status(500).json({
+      status: "error",
+      data: "Failed to generate timetable",
+    });
+  }
+});
+
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, "0.0.0.0", () => {
