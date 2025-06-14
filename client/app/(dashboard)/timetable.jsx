@@ -24,22 +24,47 @@ const Timetable = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [academicYear, setAcademicYear] = useState("2023-2024"); //use ay2023-2024 for now
   const [userData, setUserData] = useState(null);
-  const [userDataLoading, setUserDataLoading] = useState(true);  
+  const [userDataLoading, setUserDataLoading] = useState(true);
   const [userPassedMods, setUserPassedMods] = useState([]);
   const [preferences, setPreferences] = useState([
     { id: "noMon", label: "No classes on Monday", selected: false, rank: null },
-    { id: "noTues", label: "No classes on Tuesday", selected: false, rank: null },
-    { id: "noWed", label: "No classes on Wednesday", selected: false, rank: null },
-    { id: "noThurs", label: "No classes on Thursday", selected: false, rank: null },
+    {
+      id: "noTues",
+      label: "No classes on Tuesday",
+      selected: false,
+      rank: null,
+    },
+    {
+      id: "noWed",
+      label: "No classes on Wednesday",
+      selected: false,
+      rank: null,
+    },
+    {
+      id: "noThurs",
+      label: "No classes on Thursday",
+      selected: false,
+      rank: null,
+    },
     { id: "noFri", label: "No classes on Friday", selected: false, rank: null },
-    { id: "earlyEnd", label: "Prefer classes ending before 2pm", selected: false, rank: null },
-    { id: "lateStart", label: "Prefer classes starting after 10am", selected: false, rank: null },
+    {
+      id: "earlyEnd",
+      label: "Prefer classes ending before 2pm",
+      selected: false,
+      rank: null,
+    },
+    {
+      id: "lateStart",
+      label: "Prefer classes starting after 10am",
+      selected: false,
+      rank: null,
+    },
   ]);
   const [generatedTimetable, setGeneratedTimetable] = useState(null);
   const [loading, setLoading] = useState(false);
   const [timetableView, setTimetableView] = useState(false);
-  const { width, height } = Dimensions.get('window');
-  
+  const { width, height } = Dimensions.get("window");
+
   async function getModsData() {
     try {
       const response = await axios.get(
@@ -74,8 +99,8 @@ const Timetable = () => {
       setUserData(userInfo);
 
       const passedMods = userInfo.modules
-      .filter(mod => mod.completed && !["F", "CU"].includes(mod.grade))
-      .map(mod => mod.code);
+        .filter((mod) => mod.completed && !["F", "CU"].includes(mod.grade))
+        .map((mod) => mod.code);
       setUserPassedMods(passedMods);
     } catch (err) {
       console.error("Failed to fetch user data:", err);
@@ -92,27 +117,41 @@ const Timetable = () => {
     setShowDropdown(true);
 
     const filtered = allMods.filter((modData) => {
-      const matchQuery = modData.moduleCode.toUpperCase().includes(query.toUpperCase()) ||
-      modData.title.toUpperCase().includes(query.toUpperCase());
-      
-      const matchSem = modData.semesters.toString().includes(userData.semester.toString());
-      
+      const matchQuery =
+        modData.moduleCode.toUpperCase().includes(query.toUpperCase()) ||
+        modData.title.toUpperCase().includes(query.toUpperCase());
+
+      const matchSem = modData.semesters
+        .toString()
+        .includes(userData.semester.toString());
+
       //check if completed prereqs & not completed preclusions
       const checkPastMods = async () => {
         try {
           const response = await axios.get(
             `https://api.nusmods.com/v2/${academicYear}/modules/${modData.moduleCode.toUpperCase()}.json`
           );
-          
+
           if (response.data) {
             const modInfo = response.data;
             if (modInfo.prerequisite && modInfo.preclusion) {
-              return userPassedMods.some((passedMod) => modInfo.prerequisite.includes(passedMod)) &&
-              userPassedMods.some((passedMod) => !modInfo.preclusion.includes(passedMod));
+              return (
+                userPassedMods.some((passedMod) =>
+                  modInfo.prerequisite.includes(passedMod)
+                ) &&
+                userPassedMods.some(
+                  (passedMod) => !modInfo.preclusion.includes(passedMod)
+                )
+              );
             } else if (modInfo.preclusion) {
-              return userPassedMods.some((passedMod) => !modInfo.preclusion.includes(passedMod));
-            } if (modInfo.prerequisite) {
-              return userPassedMods.some((passedMod) => modInfo.prerequisite.includes(passedMod));
+              return userPassedMods.some(
+                (passedMod) => !modInfo.preclusion.includes(passedMod)
+              );
+            }
+            if (modInfo.prerequisite) {
+              return userPassedMods.some((passedMod) =>
+                modInfo.prerequisite.includes(passedMod)
+              );
             } else {
               return true;
             }
@@ -121,11 +160,11 @@ const Timetable = () => {
           Alert.alert("Error", "Failed to load modules");
           console.error("Module fetch error:", error);
         }
-      }
+      };
 
       return matchQuery && matchSem && checkPastMods;
     });
-    
+
     setFilteredMods(filtered);
   };
 
@@ -145,20 +184,37 @@ const Timetable = () => {
   };
 
   const togglePrefs = (id) => {
-    setPreferences(prevPrefs => prevPrefs.map(pref =>
-      pref.id === id
-      ? { ...pref, selected: !pref.selected, rank: !pref.selected ? 1 : null }
-      : pref
-    ));
+    setPreferences((prevPrefs) => {
+      // Toggle the selected state of the clicked preference
+      const updatedPrefs = prevPrefs.map((pref) =>
+        pref.id === id
+          ? {
+              ...pref,
+              selected: !pref.selected,
+              // Don't set rank here yet - we'll calculate it below
+            }
+          : pref
+      );
+
+      // Calculate new ranks based on selection order
+      let currentRank = 1;
+      return updatedPrefs.map((pref) => {
+        if (!pref.selected) {
+          return { ...pref, rank: null }; // Reset rank if deselected
+        }
+        // Assign incrementing ranks to selected preferences
+        return { ...pref, rank: currentRank++ };
+      });
+    });
   };
 
   const updateRank = (id, value) => {
-    setPreferences(prevPrefs => {
+    setPreferences((prevPrefs) => {
       const newRank = Number(value);
       if (isNaN(newRank)) return prevPrefs;
 
-      return prevPrefs.map(pref => {
-        if (pref.id === id) return { ...pref, rank: newRank};
+      return prevPrefs.map((pref) => {
+        if (pref.id === id) return { ...pref, rank: newRank };
 
         return pref;
       });
@@ -171,21 +227,21 @@ const Timetable = () => {
         Alert.alert("Please wait", "User data is still loading");
         return;
       }
-      
-      setLoading(true);      
+
+      setLoading(true);
       const token = await AsyncStorage.getItem("token");
       if (!token) throw new Error("No token found");
 
       const selectedPreferences = preferences
-        .filter(p => p.selected)
-        .map(p => ({ id: p.id, rank: p.rank }));
-    
+        .filter((p) => p.selected)
+        .map((p) => ({ id: p.id, rank: p.rank }));
+
       if (selectedMods.length === 0) {
         Alert.alert("No modules selected", "Please select at least one module");
         return;
       }
-      const selectedModCodes = selectedMods.map(mod => mod.moduleCode);
-      
+      const selectedModCodes = selectedMods.map((mod) => mod.moduleCode);
+
       const response = await axios.post(`${BACKEND_URL}/timetableGen`, {
         token,
         modCodes: selectedModCodes, //array of module codes
@@ -193,9 +249,9 @@ const Timetable = () => {
         acadYear: academicYear,
         preferences: selectedPreferences, //array of prefs with id & rank
       });
-    
+
       setGeneratedTimetable(response.data.data);
-      setTimetableView(true);      
+      setTimetableView(true);
     } catch (error) {
       console.error("Error fetching timetable:", error);
       Alert.alert("Error", "Failed to fetch timetable data");
@@ -212,8 +268,7 @@ const Timetable = () => {
     getUserData();
   }, []);
 
-  /*
-    const DropdownMods = ({ item }) => (
+  const DropdownMods = ({ item }) => (
     <TouchableOpacity
       style={styles.dropdownItem}
       onPress={() => toggleModSelection(item)}
@@ -225,7 +280,7 @@ const Timetable = () => {
       </Text>
     </TouchableOpacity>
   );
-
+  /*
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -348,10 +403,10 @@ const Timetable = () => {
 */
 
   const formatTime = (timeStr) => {
-    const time = timeStr.toString().padStart(4, '0');
+    const time = timeStr.toString().padStart(4, "0");
     const hours = parseInt(time.substring(0, 2));
     const minutes = time.substring(2);
-    const period = hours >= 12 ? 'PM' : 'AM';
+    const period = hours >= 12 ? "PM" : "AM";
     const displayHours = hours % 12 || 12;
     return `${displayHours}:${minutes} ${period}`;
   };
@@ -363,17 +418,17 @@ const Timetable = () => {
       Tuesday: [],
       Wednesday: [],
       Thursday: [],
-      Friday: []
+      Friday: [],
     };
 
-    generatedTimetable?.forEach(lesson => {
+    generatedTimetable?.forEach((lesson) => {
       if (grouped[lesson.day]) {
         grouped[lesson.day].push(lesson);
       }
     });
 
     // Sort lessons by start time
-    Object.keys(grouped).forEach(day => {
+    Object.keys(grouped).forEach((day) => {
       grouped[day].sort((a, b) => {
         return parseInt(a.startTime) - parseInt(b.startTime);
       });
@@ -386,7 +441,10 @@ const Timetable = () => {
 
   // Render lesson card
   const renderLessonCard = (lesson) => (
-    <View key={`${lesson.modCode}-${lesson.lessonType}`} style={styles.lessonCard}>
+    <View
+      key={`${lesson.modCode}-${lesson.lessonType}`}
+      style={styles.lessonCard}
+    >
       <Text style={styles.moduleCode}>{lesson.modCode}</Text>
       <Text style={styles.lessonType}>{lesson.lessonType}</Text>
       <Text style={styles.timeSlot}>
@@ -411,8 +469,8 @@ const Timetable = () => {
   // Render timetable view
   const renderTimetableView = () => (
     <View style={styles.timetableContainer}>
-      <TouchableOpacity 
-        onPress={() => setTimetableView(false)} 
+      <TouchableOpacity
+        onPress={() => setTimetableView(false)}
         style={styles.backButton}
       >
         <Icon name="arrow-left" size={20} color="#2C3E50" />
@@ -494,22 +552,22 @@ const Timetable = () => {
           <Text style={styles.preferencesTitle}>Preferences (optional):</Text>
           <Text style={styles.rankTitle}>Rank:</Text>
         </View>
-        
+
         {preferences.map((pref) => (
           <View key={pref.id} style={styles.preferenceItem}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => togglePrefs(pref.id)}
               style={styles.checkbox}
             >
-              <Icon 
-                name={pref.selected ? "check-square" : "square-o"} 
-                size={24} 
-                color="#4F8EF7" 
+              <Icon
+                name={pref.selected ? "check-square" : "square-o"}
+                size={24}
+                color="#4F8EF7"
               />
             </TouchableOpacity>
-            
+
             <Text style={styles.preferenceLabel}>{pref.label}</Text>
-            
+
             {pref.selected && (
               <TextInput
                 style={styles.rankInput}
@@ -541,8 +599,8 @@ const Timetable = () => {
     <View style={styles.container}>
       {userDataLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#B2CBDB" />
-          <Text style={styles.loadingText}>Loading user data...</Text>
+          <ActivityIndicator size="large" color="#AE96C7" />
+          <Text style={{ marginTop: 10, color: "#555" }}>Loading...</Text>
         </View>
       ) : timetableView ? (
         renderTimetableView()
@@ -702,9 +760,9 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   preferencesHeader: {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  marginBottom: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
   },
   preferencesTitle: {
     fontSize: 18,
@@ -742,14 +800,14 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 50,
   },
   loadingText: {
     marginTop: 20,
     fontSize: 16,
-    color: '#2C3E50',
+    color: "#2C3E50",
   },
   generatorContainer: {
     paddingHorizontal: 20,
@@ -762,28 +820,28 @@ const styles = StyleSheet.create({
     paddingTop: 65,
   },
   backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 15,
     padding: 10,
   },
   backText: {
     marginLeft: 10,
     fontSize: 16,
-    color: '#2C3E50',
-    fontWeight: '500',
+    color: "#2C3E50",
+    fontWeight: "500",
   },
   daysContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   dayColumn: {
-    width: Dimensions.get('window').width * 0.9, // 90% of screen width
+    width: Dimensions.get("window").width * 0.9, // 90% of screen width
     marginRight: 15,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 15,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -791,44 +849,44 @@ const styles = StyleSheet.create({
   },
   dayHeader: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2C3E50',
+    fontWeight: "bold",
+    color: "#2C3E50",
     marginBottom: 15,
-    textAlign: 'center',
+    textAlign: "center",
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomColor: "#ddd",
     paddingBottom: 10,
   },
   lessonCard: {
-    backgroundColor: '#B2CBDB',
+    backgroundColor: "#B2CBDB",
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
   },
   moduleCode: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     fontSize: 16,
-    color: '#2C3E50',
+    color: "#2C3E50",
   },
   lessonType: {
     fontSize: 14,
-    color: '#2C3E50',
+    color: "#2C3E50",
     marginTop: 4,
   },
   timeSlot: {
     fontSize: 14,
-    color: '#34495e',
+    color: "#34495e",
     marginTop: 4,
   },
   venue: {
     fontSize: 14,
-    color: '#7f8c8d',
+    color: "#7f8c8d",
     marginTop: 4,
   },
   noClassesText: {
-    textAlign: 'center',
-    color: '#95a5a6',
-    fontStyle: 'italic',
+    textAlign: "center",
+    color: "#95a5a6",
+    fontStyle: "italic",
     marginVertical: 20,
-  },  
+  },
 });
