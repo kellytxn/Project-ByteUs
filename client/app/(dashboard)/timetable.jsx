@@ -27,7 +27,11 @@ const Timetable = () => {
   const [userDataLoading, setUserDataLoading] = useState(true);
   const [userPassedMods, setUserPassedMods] = useState([]);
   const [preferences, setPreferences] = useState([
-    { id: "noMon", label: "No classes on Monday", selected: false, rank: null },
+    { id: "noMon",
+      label: "No classes on Monday",
+      selected: false,
+      rank: null,
+    },
     {
       id: "noTues",
       label: "No classes on Tuesday",
@@ -46,7 +50,11 @@ const Timetable = () => {
       selected: false,
       rank: null,
     },
-    { id: "noFri", label: "No classes on Friday", selected: false, rank: null },
+    { id: "noFri",
+      label: "No classes on Friday",
+      selected: false,
+      rank: null,
+    },
     {
       id: "earlyEnd",
       label: "Prefer classes ending before 2pm",
@@ -257,6 +265,20 @@ const Timetable = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePress = () => {
+    if (loading) {
+      Alert.alert("Please Wait", "Timetable is being generated...");
+      return;
+    }
+
+    if (selectedMods.length === 0) {
+      Alert.alert("No Modules Selected", "Please select at least one module to generate a timetable.");
+      return;
+    }
+
+    fetchTimetable();
   };
 
   useEffect(() => {
@@ -487,12 +509,6 @@ const Timetable = () => {
   // Render generator view
   const renderGeneratorView = () => (
     <ScrollView contentContainerStyle={styles.generatorContainer}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>
-          Selected Modules: {selectedMods.length}
-        </Text>
-      </View>
-
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <View style={styles.searchIcon}>
@@ -529,7 +545,7 @@ const Timetable = () => {
 
       {selectedMods.length > 0 && (
         <View style={styles.selectedContainer}>
-          <Text style={styles.selectedTitle}>Selected Modules:</Text>
+          <Text style={styles.selectedTitle}>Selected Modules: {selectedMods.length}</Text>
           <View style={styles.selectedList}>
             {selectedMods.map((mod) => (
               <View key={mod.moduleCode} style={styles.selectedItem}>
@@ -581,8 +597,10 @@ const Timetable = () => {
       </View>
 
       <TouchableOpacity
-        style={styles.generateButton}
-        onPress={fetchTimetable}
+        style={[styles.generateButton,
+          (selectedMods.length === 0 || loading) && styles.disabledButton
+        ]}
+        onPress={handlePress}
         disabled={selectedMods.length === 0 || loading}
       >
         {loading ? (
@@ -616,15 +634,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#EBE9E3",
-  },
-  header: {
-    marginBottom: 15,
-    paddingHorizontal: 5,
-  },
-  headerText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#2C3E50",
   },
   searchContainer: {
     zIndex: 10,
@@ -751,6 +760,10 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  disabledButton: {
+    backgroundColor: '#A0A0A0',
+    opacity: 0.7,
   },
   preferencesContainer: {
     backgroundColor: "#FFFFFF",
