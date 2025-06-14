@@ -185,13 +185,12 @@ const Timetable = () => {
 
   const togglePrefs = (id) => {
     setPreferences((prevPrefs) => {
-      // Toggle the selected state of the clicked preference
+      // Toggle the state of the clicked preference
       const updatedPrefs = prevPrefs.map((pref) =>
         pref.id === id
           ? {
               ...pref,
               selected: !pref.selected,
-              // Don't set rank here yet - we'll calculate it below
             }
           : pref
       );
@@ -200,9 +199,9 @@ const Timetable = () => {
       let currentRank = 1;
       return updatedPrefs.map((pref) => {
         if (!pref.selected) {
-          return { ...pref, rank: null }; // Reset rank if deselected
+          return { ...pref, rank: null };
         }
-        // Assign incrementing ranks to selected preferences
+        // Assign increasing ranks to selected preferences
         return { ...pref, rank: currentRank++ };
       });
     });
