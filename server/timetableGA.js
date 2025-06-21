@@ -6,8 +6,7 @@ const generatePopulation = (modCodes, modsData, populationSize = 100) => {
     let timetable = [];
 
     //pick classes for each mod, and add to timetable
-    for (let i = 0; i < modCodes.length; i++) {
-      let modCode = modCodes[i];
+    for (const modCode of modCodes) {
       let allClasses = modsData[modCode];
       if (!allClasses || allClasses.length === 0) continue;
 
@@ -244,7 +243,7 @@ const evolve = (
 ) => {
   let nextGen = select(population, prefs, populationSize);
 
-  // create next generation with crossover and mutation
+  //create next generation with crossover and mutation
   for (let i = 0; i < populationSize; i++) {
     if (Math.random() < crossoverRate) {
       let timetableA = nextGen[i];

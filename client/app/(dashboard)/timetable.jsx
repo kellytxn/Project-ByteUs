@@ -3,6 +3,7 @@ import {
   Alert,
   Dimensions,
   FlatList,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,6 +14,7 @@ import {
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Icon from "react-native-vector-icons/FontAwesome";
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BACKEND_URL } from "../../config";
 
@@ -21,11 +23,18 @@ const Timetable = () => {
   const [filteredMods, setFilteredMods] = useState([]); //mods displayed in dropdown box
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMods, setSelectedMods] = useState([]); //all picked mods
+  const [totalMCs, setTotalMCs] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [academicYear, setAcademicYear] = useState("2023-2024"); //use ay2023-2024 for now
   const [userData, setUserData] = useState(null);
   const [userDataLoading, setUserDataLoading] = useState(true);
   const [userPassedMods, setUserPassedMods] = useState([]);
+  const [generatedTimetable, setGeneratedTimetable] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [timetableView, setTimetableView] = useState(false);
+  const [allClassByType, setAllClassByType] = useState({});
+  const [selectedLesson, setSelectedLesson] = useState(null);
+  const [showLessonModal, setShowLessonModal] = useState(false);
   const [preferences, setPreferences] = useState([
     { id: "noMon",
       label: "No classes on Monday",
@@ -68,10 +77,6 @@ const Timetable = () => {
       rank: null,
     },
   ]);
-  const [generatedTimetable, setGeneratedTimetable] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [timetableView, setTimetableView] = useState(false);
-  const { width, height } = Dimensions.get("window");
 
   async function getModsData() {
     try {
@@ -119,7 +124,15 @@ const Timetable = () => {
 
   //display mods in dropdown box
   const shownMods = (query) => {
-    if (!userData) return;
+    if (!userData) {
+      Alert.alert("Please wait", "User data is still loading");
+      return;
+    }
+
+    if (!userData.semester || typeof userData.semester === "undefined") {
+      Alert.alert("Please enter your current semester");
+      return;
+    }
 
     setSearchQuery(query);
     setShowDropdown(true);
@@ -129,9 +142,10 @@ const Timetable = () => {
         modData.moduleCode.toUpperCase().includes(query.toUpperCase()) ||
         modData.title.toUpperCase().includes(query.toUpperCase());
 
-      const matchSem = modData.semesters
-        .toString()
-        .includes(userData.semester.toString());
+      const matchSem = modData.semesters 
+      ? modData.semesters.toString()
+        .includes(userData.semester.toString())
+      : false;
 
       //check if completed prereqs & not completed preclusions
       const checkPastMods = async () => {
@@ -193,7 +207,6 @@ const Timetable = () => {
 
   const togglePrefs = (id) => {
     setPreferences((prevPrefs) => {
-      // Toggle the state of the clicked preference
       const updatedPrefs = prevPrefs.map((pref) =>
         pref.id === id
           ? {
@@ -203,13 +216,11 @@ const Timetable = () => {
           : pref
       );
 
-      // Calculate new ranks based on selection order
       let currentRank = 1;
       return updatedPrefs.map((pref) => {
         if (!pref.selected) {
           return { ...pref, rank: null };
         }
-        // Assign increasing ranks to selected preferences
         return { ...pref, rank: currentRank++ };
       });
     });
@@ -230,7 +241,7 @@ const Timetable = () => {
 
   const fetchTimetable = async () => {
     try {
-      if (!userData) {
+      if (!userData || !userData.semester) {
         Alert.alert("Please wait", "User data is still loading");
         return;
       }
@@ -243,12 +254,8 @@ const Timetable = () => {
         .filter((p) => p.selected)
         .map((p) => ({ id: p.id, rank: p.rank }));
 
-      if (selectedMods.length === 0) {
-        Alert.alert("No modules selected", "Please select at least one module");
-        return;
-      }
       const selectedModCodes = selectedMods.map((mod) => mod.moduleCode);
-
+      console.log(userData.semester);
       const response = await axios.post(`${BACKEND_URL}/timetableGen`, {
         token,
         modCodes: selectedModCodes, //array of module codes
@@ -281,6 +288,22 @@ const Timetable = () => {
     fetchTimetable();
   };
 
+  const handleLessonPress = (lesson) => {
+    setSelectedLesson(lesson);
+    setShowLessonModal(true);
+  };
+
+  const replaceLesson = (newLesson) => {
+    setGeneratedTimetable(prevTimetable => 
+      prevTimetable.map(prevLesson =>
+        prevLesson.modCode === newLesson.modCode &&
+        prevLesson.lessonType === newLesson.lessonType
+        ? newLesson
+        : prevLesson
+      ));
+    setShowLessonModal(false);
+  };
+
   useEffect(() => {
     getModsData();
   }, []);
@@ -288,6 +311,76 @@ const Timetable = () => {
   useEffect(() => {
     getUserData();
   }, []);
+
+  useEffect(() => {
+    const calculateMCs = async () => {
+      let total = 0;
+      for (const mod of selectedMods) {
+        try {
+          const response = await axios.get(
+            `https://api.nusmods.com/v2/${academicYear}/modules/${mod.moduleCode}.json`
+          );
+          total += Number(response.data.moduleCredit);
+        } catch (error) {
+          console.error("Error fetching module credits:", error);
+        }
+      }
+      setTotalMCs(total);
+    };
+
+    if (selectedMods.length > 0) {
+      calculateMCs();
+    } else {
+      setTotalMCs(0);
+    }
+  }, [selectedMods, academicYear]);
+
+  useEffect(() => {
+    const sortAllClassesByType = async () => {
+      if (!userData) return;
+
+      let allClassesByType = {};
+      for (const mod of selectedMods) {
+        try {
+          let response = await axios.get(
+            `https://api.nusmods.com/v2/${academicYear}/modules/${mod.moduleCode}.json`
+          );
+          let allSemClasses = response.data.semesterData
+            .filter((info) => info.semester
+            ? info.semester.toString() === userData.semester.toString()
+            : false);
+          let allClasses = allSemClasses[0].timetable;
+          let classesByType = {};
+
+          allClasses.forEach((lesson) => {
+            if (!classesByType[lesson.lessonType]) {
+              classesByType[lesson.lessonType] = [];
+            }
+            classesByType[lesson.lessonType].push({
+              modCode: mod.moduleCode,
+              startTime: lesson.startTime,
+              endTime: lesson.endTime,
+              weeks: lesson.weeks,
+              day: lesson.day,
+              venue: lesson.venue,
+              lessonType: lesson.lessonType,
+            });
+          });
+
+          allClassesByType[mod.moduleCode] = classesByType;
+        } catch (error) {
+          console.error("Error fetching module credits:", error);
+        }
+      }
+      setAllClassByType(allClassesByType);
+    };
+
+    if (selectedMods.length > 0) {
+      sortAllClassesByType();
+    } else {
+      setAllClassByType({});
+    }
+  }, [selectedMods, academicYear]);
 
   const DropdownMods = ({ item }) => (
     <TouchableOpacity
@@ -301,127 +394,6 @@ const Timetable = () => {
       </Text>
     </TouchableOpacity>
   );
-  /*
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerText}>
-          Selected Modules: {selectedMods.length}
-        </Text>
-      </View>
-
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <View style={styles.searchIcon}>
-            <Icon name="search" size={18} color="#707070" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search module code or name"
-              placeholderTextColor={"#707070"}
-              value={searchQuery}
-              onChangeText={shownMods}
-              onFocus={() => searchQuery.length > 0 && setShowDropdown(true)}
-            />
-          </View>
-        </View>
-
-        {showDropdown && (
-          <View style={styles.dropdown}>
-            {filteredMods.length > 0 ? (
-              <FlatList
-                data={filteredMods}
-                keyExtractor={(item) => item.moduleCode}
-                renderItem={({ item }) => <DropdownMods item={item} />}
-                keyboardShouldPersistTaps="always"
-                style={styles.dropdownList}
-              />
-            ) : (
-              <View style={styles.dropdownEmpty}>
-                <Text style={styles.dropdownEmptyText}>No modules found</Text>
-              </View>
-            )}
-          </View>
-        )}
-      </View>
-
-      {selectedMods.length > 0 && (
-        <View style={styles.selectedContainer}>
-          <Text style={styles.selectedTitle}>Selected Modules:</Text>
-          <View style={styles.selectedList}>
-            {selectedMods.map((mod) => (
-              <View key={mod.moduleCode} style={styles.selectedItem}>
-                <Text style={styles.selectedItemText}>{mod.moduleCode}</Text>
-                <TouchableOpacity
-                  onPress={() => toggleModSelection(mod)}
-                  style={styles.removeButton}
-                >
-                  <Icon name="times" size={16} color="#F44336" />
-                </TouchableOpacity>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
-      <View style={styles.preferencesContainer}>
-        <View style={styles.preferencesHeader}>
-          <Text style={styles.preferencesTitle}>Preferences (optional):</Text>
-          <Text style={styles.rankTitle}>Rank:</Text>
-        </View>
-        
-        {preferences.map((pref) => (
-          <View key={pref.id} style={styles.preferenceItem}>
-            <TouchableOpacity 
-              onPress={() => togglePrefs(pref.id)}
-              style={styles.checkbox}
-            >
-              <Icon 
-                name={pref.selected ? "check-square" : "square-o"} 
-                size={24} 
-                color="#4F8EF7" 
-              />
-            </TouchableOpacity>
-            
-            <Text style={styles.preferenceLabel}>{pref.label}</Text>
-            
-            {pref.selected && (
-              <TextInput
-                style={styles.rankInput}
-                keyboardType="numeric"
-                placeholder="Rank"
-                value={pref.rank ? pref.rank.toString() : ""}
-                onChangeText={(text) => updateRank(pref.id, text)}
-              />
-            )}
-          </View>
-        ))}
-      </View>
-
-      {generatedTimetable ? (
-        <TimetableView 
-        timetable={generatedTimetable} 
-        onBack={resetTimetable}
-        screenWidth={width}
-        />
-      ) : loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#B2CBDB" />
-          <Text style={styles.loadingText}>Generating timetable...</Text>
-        </View>
-      ) : null}
-
-      <TouchableOpacity
-        style={styles.generateButton}
-        onPress={fetchTimetable}
-        disabled={selectedMods.length === 0}
-      >
-        <Text style={styles.generateButtonText}>Generate Timetable</Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
-
-*/
 
   const formatTime = (timeStr) => {
     const time = timeStr.toString().padStart(4, "0");
@@ -432,7 +404,6 @@ const Timetable = () => {
     return `${displayHours}:${minutes} ${period}`;
   };
 
-  // Group lessons by day
   const groupLessonsByDay = () => {
     const grouped = {
       Monday: [],
@@ -442,13 +413,15 @@ const Timetable = () => {
       Friday: [],
     };
 
-    generatedTimetable?.forEach((lesson) => {
-      if (grouped[lesson.day]) {
-        grouped[lesson.day].push(lesson);
-      }
-    });
+    if (generatedTimetable) {
+      generatedTimetable.forEach((lesson) => {
+        if (grouped[lesson.day]) {
+          grouped[lesson.day].push(lesson);
+        }
+      })
+    };
 
-    // Sort lessons by start time
+    //sort each day's lessons by start time
     Object.keys(grouped).forEach((day) => {
       grouped[day].sort((a, b) => {
         return parseInt(a.startTime) - parseInt(b.startTime);
@@ -460,55 +433,117 @@ const Timetable = () => {
 
   const groupedLessons = groupLessonsByDay();
 
-  // Render lesson card
-  const renderLessonCard = (lesson) => (
-    <View
-      key={`${lesson.modCode}-${lesson.lessonType}`}
-      style={styles.lessonCard}
+  const shortformDay =  (day) => {
+    if (day === "Monday") return "Mon";
+    if (day === "Tuesday") return "Tue";
+    if (day === "Wednesday") return "Wed";
+    if (day === "Thursday") return "Thu";
+    if (day === "Friday") return "Fri";    
+  }
+
+  const LessonSelectionModal = () => {
+    if (!selectedLesson) return;
+
+    const alternativeLessons = allClassByType[selectedLesson.modCode][selectedLesson.lessonType];
+
+    return (
+      <Modal
+        visible={showLessonModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowLessonModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>
+              Select {selectedLesson.lessonType} for {selectedLesson.modCode}
+            </Text>
+              
+            <FlatList
+              data={alternativeLessons}
+              keyExtractor={(item, index) => `${item.modCode}-${item.lessonType}-${index}`}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                  style={styles.altLessonItem}
+                  onPress={() => replaceLesson(item)}
+                >
+                  <View style={styles.altLessonHeader}>
+                    <Text style={styles.altDay}>{item.day}</Text>
+                  </View>
+                  <Text style={styles.altTime}>
+                    {formatTime(item.startTime)} - {formatTime(item.endTime)}
+                  </Text>
+                  <Text style={styles.altVenue}>{item.venue}</Text>
+                </TouchableOpacity>
+              )}
+            />
+            <Pressable onPress={() => setShowLessonModal(false)}>
+              <Ionicons name="close" size={22} color="#AE96C7"/>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    );
+  };
+
+
+  const LessonCard = (lesson) => (
+    <TouchableOpacity
+      onPress={() => handleLessonPress(lesson)}
+      activeOpacity={0.7}
+      key={`${lesson.modCode}-${lesson.lessonType}`}      
     >
-      <Text style={styles.moduleCode}>{lesson.modCode}</Text>
-      <Text style={styles.lessonType}>{lesson.lessonType}</Text>
-      <Text style={styles.timeSlot}>
-        {formatTime(lesson.startTime)} - {formatTime(lesson.endTime)}
-      </Text>
-      <Text style={styles.venue}>{lesson.venue}</Text>
-    </View>
+      <View style={styles.lessonCard}>
+        <View style={styles.lessonHeader}>
+          <Text style={styles.moduleCode}>{lesson.modCode}</Text>
+          <Text style={styles.lessonType}>{lesson.lessonType}</Text>
+        </View>
+        <Text style={styles.timeSlot}>
+          {formatTime(lesson.startTime)} - {formatTime(lesson.endTime)}
+        </Text>
+        <Text style={styles.venue}>{lesson.venue}</Text>
+      </View>
+    </TouchableOpacity>
   );
 
-  // Render day column
-  const renderDayColumn = (day) => (
+  const dayColumn = (day) => (
     <View key={day} style={styles.dayColumn}>
-      <Text style={styles.dayHeader}>{day}</Text>
-      {groupedLessons[day].length > 0 ? (
-        groupedLessons[day].map(renderLessonCard)
-      ) : (
-        <Text style={styles.noClassesText}>No classes</Text>
-      )}
+      <Text style={styles.dayHeader}>{shortformDay(day)}</Text>
+      {groupedLessons[day].length > 0 
+      ? (groupedLessons[day].map((lesson, index) => (
+        <LessonCard
+          key={`${lesson.modCode}-${lesson.lessonType}-${index}`} 
+          lesson={lesson} 
+        />)))
+      : (<Text style={styles.noClassesText}>No classes</Text>)
+      }
     </View>
   );
 
-  // Render timetable view
-  const renderTimetableView = () => (
+  const timetableViewer = () => (
     <View style={styles.timetableContainer}>
       <TouchableOpacity
         onPress={() => setTimetableView(false)}
         style={styles.backButton}
       >
         <Icon name="arrow-left" size={20} color="#2C3E50" />
-        <Text style={styles.backText}>Back to Generator</Text>
+        <Text style={styles.backText}>Back to Module Selection</Text>
       </TouchableOpacity>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View style={styles.daysContainer}>
-          {Object.keys(groupedLessons).map(renderDayColumn)}
+          {Object.keys(groupedLessons).map(dayColumn)}
         </View>
       </ScrollView>
     </View>
   );
 
-  // Render generator view
-  const renderGeneratorView = () => (
-    <ScrollView contentContainerStyle={styles.generatorContainer}>
+  const generatorView = () => (
+    <ScrollView 
+      showsVerticalScrollIndicator={true} 
+      nestedScrollEnabled={true} 
+      contentContainerStyle={styles.generatorContainer}
+    >
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <View style={styles.searchIcon}>
@@ -533,6 +568,8 @@ const Timetable = () => {
                 renderItem={({ item }) => <DropdownMods item={item} />}
                 keyboardShouldPersistTaps="always"
                 style={styles.dropdownList}
+                nestedScrollEnabled={true}
+                showsVerticalScrollIndicator={true}
               />
             ) : (
               <View style={styles.dropdownEmpty}>
@@ -545,7 +582,7 @@ const Timetable = () => {
 
       {selectedMods.length > 0 && (
         <View style={styles.selectedContainer}>
-          <Text style={styles.selectedTitle}>Selected Modules: {selectedMods.length}</Text>
+          <Text style={styles.selectedTitle}>Module Credits: {totalMCs}</Text>
           <View style={styles.selectedList}>
             {selectedMods.map((mod) => (
               <View key={mod.moduleCode} style={styles.selectedItem}>
@@ -601,7 +638,6 @@ const Timetable = () => {
           (selectedMods.length === 0 || loading) && styles.disabledButton
         ]}
         onPress={handlePress}
-        disabled={selectedMods.length === 0 || loading}
       >
         {loading ? (
           <ActivityIndicator color="white" />
@@ -620,9 +656,12 @@ const Timetable = () => {
           <Text style={{ marginTop: 10, color: "#555" }}>Loading...</Text>
         </View>
       ) : timetableView ? (
-        renderTimetableView()
+        <>
+          {timetableViewer()}
+          <LessonSelectionModal />
+        </>
       ) : (
-        renderGeneratorView()
+        generatorView()
       )}
     </View>
   );
@@ -814,12 +853,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 50,
+    paddingTop: 20,
   },
   loadingText: {
-    marginTop: 20,
-    fontSize: 16,
-    color: "#2C3E50",
+    marginTop: 10,
+    color: "#555",
   },
   generatorContainer: {
     paddingHorizontal: 20,
@@ -848,7 +886,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   dayColumn: {
-    width: Dimensions.get("window").width * 0.9, // 90% of screen width
+    width: Dimensions.get("window").width * 0.7,
     marginRight: 15,
     backgroundColor: "white",
     borderRadius: 10,
@@ -876,29 +914,77 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   moduleCode: {
-    fontWeight: "bold",
+    fontWeight: "700",
     fontSize: 16,
-    color: "#2C3E50",
+    color: "#2D3748",
   },
   lessonType: {
     fontSize: 14,
-    color: "#2C3E50",
-    marginTop: 4,
+    color: "#4A5568",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 50,
   },
   timeSlot: {
-    fontSize: 14,
-    color: "#34495e",
-    marginTop: 4,
+    fontSize: 15,
+    color: "#2D3748",
+    marginBottom: 4,
+    fontWeight: "500",
   },
   venue: {
     fontSize: 14,
-    color: "#7f8c8d",
-    marginTop: 4,
+    color: "#4A5568",
+    fontWeight: "500",
   },
   noClassesText: {
     textAlign: "center",
     color: "#95a5a6",
     fontStyle: "italic",
     marginVertical: 20,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    width: '90%',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#2C3E50',
+    textAlign: 'center',
+  },
+  altLessonItem: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  altLessonHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 5,
+  },
+  altClassNo: {
+    fontWeight: 'bold',
+    color: '#2C3E50',
+  },
+  altDay: {
+    color: '#7F8C8D',
+    fontWeight: '500',
+  },
+  altTime: {
+    color: '#34495E',
+    marginBottom: 3,
+  },
+  altVenue: {
+    color: '#7F8C8D',
   },
 });
