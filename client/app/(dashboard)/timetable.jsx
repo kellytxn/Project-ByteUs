@@ -10,6 +10,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Pressable,
 } from "react-native";
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -36,11 +37,7 @@ const Timetable = () => {
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [showLessonModal, setShowLessonModal] = useState(false);
   const [preferences, setPreferences] = useState([
-    { id: "noMon",
-      label: "No classes on Monday",
-      selected: false,
-      rank: null,
-    },
+    { id: "noMon", label: "No classes on Monday", selected: false, rank: null },
     {
       id: "noTues",
       label: "No classes on Tuesday",
@@ -59,11 +56,7 @@ const Timetable = () => {
       selected: false,
       rank: null,
     },
-    { id: "noFri",
-      label: "No classes on Friday",
-      selected: false,
-      rank: null,
-    },
+    { id: "noFri", label: "No classes on Friday", selected: false, rank: null },
     {
       id: "earlyEnd",
       label: "Prefer classes ending before 2pm",
@@ -142,10 +135,9 @@ const Timetable = () => {
         modData.moduleCode.toUpperCase().includes(query.toUpperCase()) ||
         modData.title.toUpperCase().includes(query.toUpperCase());
 
-      const matchSem = modData.semesters 
-      ? modData.semesters.toString()
-        .includes(userData.semester.toString())
-      : false;
+      const matchSem = modData.semesters
+        ? modData.semesters.toString().includes(userData.semester.toString())
+        : false;
 
       //check if completed prereqs & not completed preclusions
       const checkPastMods = async () => {
@@ -208,20 +200,18 @@ const Timetable = () => {
   const togglePrefs = (id) => {
     setPreferences((prevPrefs) => {
       const updatedPrefs = prevPrefs.map((pref) =>
-        pref.id === id
-          ? {
-              ...pref,
-              selected: !pref.selected,
-            }
-          : pref
+        pref.id === id ? { ...pref, selected: !pref.selected } : pref
       );
 
-      let currentRank = 1;
+      const selectedPrefs = updatedPrefs
+        .filter((p) => p.selected)
+        .sort((a, b) => (a.rank || Infinity) - (b.rank || Infinity));
+
       return updatedPrefs.map((pref) => {
-        if (!pref.selected) {
-          return { ...pref, rank: null };
-        }
-        return { ...pref, rank: currentRank++ };
+        if (!pref.selected) return { ...pref, rank: null };
+
+        const newRank = selectedPrefs.findIndex((p) => p.id === pref.id) + 1;
+        return { ...pref, rank: newRank };
       });
     });
   };
@@ -281,7 +271,10 @@ const Timetable = () => {
     }
 
     if (selectedMods.length === 0) {
-      Alert.alert("No Modules Selected", "Please select at least one module to generate a timetable.");
+      Alert.alert(
+        "No Modules Selected",
+        "Please select at least one module to generate a timetable."
+      );
       return;
     }
 
@@ -294,13 +287,14 @@ const Timetable = () => {
   };
 
   const replaceLesson = (newLesson) => {
-    setGeneratedTimetable(prevTimetable => 
-      prevTimetable.map(prevLesson =>
+    setGeneratedTimetable((prevTimetable) =>
+      prevTimetable.map((prevLesson) =>
         prevLesson.modCode === newLesson.modCode &&
         prevLesson.lessonType === newLesson.lessonType
-        ? newLesson
-        : prevLesson
-      ));
+          ? newLesson
+          : prevLesson
+      )
+    );
     setShowLessonModal(false);
   };
 
@@ -345,10 +339,11 @@ const Timetable = () => {
           let response = await axios.get(
             `https://api.nusmods.com/v2/${academicYear}/modules/${mod.moduleCode}.json`
           );
-          let allSemClasses = response.data.semesterData
-            .filter((info) => info.semester
-            ? info.semester.toString() === userData.semester.toString()
-            : false);
+          let allSemClasses = response.data.semesterData.filter((info) =>
+            info.semester
+              ? info.semester.toString() === userData.semester.toString()
+              : false
+          );
           let allClasses = allSemClasses[0].timetable;
           let classesByType = {};
 
@@ -418,8 +413,8 @@ const Timetable = () => {
         if (grouped[lesson.day]) {
           grouped[lesson.day].push(lesson);
         }
-      })
-    };
+      });
+    }
 
     //sort each day's lessons by start time
     Object.keys(grouped).forEach((day) => {
@@ -433,18 +428,19 @@ const Timetable = () => {
 
   const groupedLessons = groupLessonsByDay();
 
-  const shortformDay =  (day) => {
+  const shortformDay = (day) => {
     if (day === "Monday") return "Mon";
     if (day === "Tuesday") return "Tue";
     if (day === "Wednesday") return "Wed";
     if (day === "Thursday") return "Thu";
-    if (day === "Friday") return "Fri";    
-  }
+    if (day === "Friday") return "Fri";
+  };
 
   const LessonSelectionModal = () => {
     if (!selectedLesson) return;
 
-    const alternativeLessons = allClassByType[selectedLesson.modCode][selectedLesson.lessonType];
+    const alternativeLessons =
+      allClassByType[selectedLesson.modCode][selectedLesson.lessonType];
 
     return (
       <Modal
@@ -455,15 +451,38 @@ const Timetable = () => {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
+            <Pressable onPress={() => setShowLessonModal(false)}>
+              <Ionicons name="close" size={22} color="#AE96C7" />
+            </Pressable>
             <Text style={styles.modalTitle}>
               Select {selectedLesson.lessonType} for {selectedLesson.modCode}
             </Text>
-              
+
             <FlatList
-              data={alternativeLessons}
-              keyExtractor={(item, index) => `${item.modCode}-${item.lessonType}-${index}`}
+              data={alternativeLessons
+                // Sort by day
+                .sort((a, b) => {
+                  const daysOrder = [
+                    "Monday",
+                    "Tuesday",
+                    "Wednesday",
+                    "Thursday",
+                    "Friday",
+                  ];
+                  return daysOrder.indexOf(a.day) - daysOrder.indexOf(b.day);
+                })
+                // Sort by time
+                .sort((a, b) => {
+                  if (a.day === b.day) {
+                    return a.startTime - b.startTime;
+                  }
+                  return 0;
+                })}
+              keyExtractor={(item, index) =>
+                `${item.modCode}-${item.lessonType}-${index}`
+              }
               renderItem={({ item }) => (
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.altLessonItem}
                   onPress={() => replaceLesson(item)}
                 >
@@ -477,46 +496,85 @@ const Timetable = () => {
                 </TouchableOpacity>
               )}
             />
-            <Pressable onPress={() => setShowLessonModal(false)}>
-              <Ionicons name="close" size={22} color="#AE96C7"/>
-            </Pressable>
           </View>
         </View>
       </Modal>
     );
   };
 
+  const colorCache = {};
 
-  const LessonCard = (lesson) => (
-    <TouchableOpacity
-      onPress={() => handleLessonPress(lesson)}
-      activeOpacity={0.7}
-      key={`${lesson.modCode}-${lesson.lessonType}`}      
-    >
-      <View style={styles.lessonCard}>
-        <View style={styles.lessonHeader}>
-          <Text style={styles.moduleCode}>{lesson.modCode}</Text>
-          <Text style={styles.lessonType}>{lesson.lessonType}</Text>
+  const getModuleColor = (moduleCode) => {
+    // Return color if exists
+    if (colorCache[moduleCode]) return colorCache[moduleCode];
+
+    // Generate new color
+    let hash = 0;
+    for (let i = 0; i < moduleCode.length; i++) {
+      hash = moduleCode.charCodeAt(i) + ((hash << 7) - hash);
+      hash = hash & hash;
+    }
+
+    const baseHue = 180;
+    const hueRange = 120;
+    const h = baseHue + (Math.abs(hash) % hueRange);
+    const s = 25 + (Math.abs(hash) % 31);
+    const l = 85 + (Math.abs(hash) % 11);
+
+    const color = `hsl(${h}, ${s}%, ${l}%)`;
+
+    // Cache the color
+    colorCache[moduleCode] = color;
+    return color;
+  };
+
+  const LessonCard = ({ lesson }) => {
+    return (
+      <TouchableOpacity
+        onPress={() => handleLessonPress(lesson)}
+        activeOpacity={0.7}
+        key={`${lesson.modCode}-${lesson.lessonType}`}
+      >
+        <View
+          style={[
+            styles.lessonCard,
+            { backgroundColor: getModuleColor(lesson.modCode) },
+          ]}
+        >
+          <View style={styles.lessonHeader}>
+            <Text style={styles.moduleCode}>
+              {lesson?.modCode ?? "Unknown Module"}
+            </Text>
+            <Text style={styles.lessonType}>
+              {lesson?.lessonType ?? "Unknown Type"}
+            </Text>
+          </View>
+          <Text style={styles.timeSlot}>
+            {lesson?.startTime && lesson?.endTime
+              ? `${formatTime(lesson.startTime)} - ${formatTime(
+                  lesson.endTime
+                )}`
+              : "Time Unavailable"}
+          </Text>
+          <Text style={styles.venue}>{lesson.venue}</Text>
         </View>
-        <Text style={styles.timeSlot}>
-          {formatTime(lesson.startTime)} - {formatTime(lesson.endTime)}
-        </Text>
-        <Text style={styles.venue}>{lesson.venue}</Text>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   const dayColumn = (day) => (
     <View key={day} style={styles.dayColumn}>
       <Text style={styles.dayHeader}>{shortformDay(day)}</Text>
-      {groupedLessons[day].length > 0 
-      ? (groupedLessons[day].map((lesson, index) => (
-        <LessonCard
-          key={`${lesson.modCode}-${lesson.lessonType}-${index}`} 
-          lesson={lesson} 
-        />)))
-      : (<Text style={styles.noClassesText}>No classes</Text>)
-      }
+      {groupedLessons[day].length > 0 ? (
+        groupedLessons[day].map((lesson, index) => (
+          <LessonCard
+            key={`${lesson.modCode}-${lesson.lessonType}-${index}`}
+            lesson={lesson}
+          />
+        ))
+      ) : (
+        <Text style={styles.noClassesText}>No classes</Text>
+      )}
     </View>
   );
 
@@ -527,7 +585,6 @@ const Timetable = () => {
         style={styles.backButton}
       >
         <Icon name="arrow-left" size={20} color="#2C3E50" />
-        <Text style={styles.backText}>Back to Module Selection</Text>
       </TouchableOpacity>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -539,9 +596,9 @@ const Timetable = () => {
   );
 
   const generatorView = () => (
-    <ScrollView 
-      showsVerticalScrollIndicator={true} 
-      nestedScrollEnabled={true} 
+    <ScrollView
+      showsVerticalScrollIndicator={true}
+      nestedScrollEnabled={true}
       contentContainerStyle={styles.generatorContainer}
     >
       <View style={styles.searchContainer}>
@@ -570,6 +627,10 @@ const Timetable = () => {
                 style={styles.dropdownList}
                 nestedScrollEnabled={true}
                 showsVerticalScrollIndicator={true}
+                removeClippedSubviews={false}
+                initialNumToRender={10}
+                maxToRenderPerBatch={10}
+                windowSize={10}
               />
             ) : (
               <View style={styles.dropdownEmpty}>
@@ -585,7 +646,16 @@ const Timetable = () => {
           <Text style={styles.selectedTitle}>Module Credits: {totalMCs}</Text>
           <View style={styles.selectedList}>
             {selectedMods.map((mod) => (
-              <View key={mod.moduleCode} style={styles.selectedItem}>
+              <View
+                key={mod.moduleCode}
+                style={[
+                  styles.selectedItem,
+                  {
+                    backgroundColor: getModuleColor(mod.moduleCode),
+                    borderColor: getModuleColor(mod.moduleCode),
+                  },
+                ]}
+              >
                 <Text style={styles.selectedItemText}>{mod.moduleCode}</Text>
                 <TouchableOpacity
                   onPress={() => toggleModSelection(mod)}
@@ -634,8 +704,9 @@ const Timetable = () => {
       </View>
 
       <TouchableOpacity
-        style={[styles.generateButton,
-          (selectedMods.length === 0 || loading) && styles.disabledButton
+        style={[
+          styles.generateButton,
+          (selectedMods.length === 0 || loading) && styles.disabledButton,
         ]}
         onPress={handlePress}
       >
@@ -755,7 +826,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 10,
     borderTopWidth: 2,
-    borderTopColor: "#4CAF50",
+    borderTopColor: "#B2CBDB",
   },
   selectedTitle: {
     fontSize: 18,
@@ -781,7 +852,7 @@ const styles = StyleSheet.create({
   },
   selectedItemText: {
     fontSize: 16,
-    color: "#2E7D32",
+    color: "#36454F",
     marginRight: 8,
     fontWeight: "500",
   },
@@ -801,7 +872,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   disabledButton: {
-    backgroundColor: '#A0A0A0',
+    backgroundColor: "#A0A0A0",
     opacity: 0.7,
   },
   preferencesContainer: {
@@ -921,7 +992,6 @@ const styles = StyleSheet.create({
   lessonType: {
     fontSize: 14,
     color: "#4A5568",
-    paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 50,
   },
@@ -944,47 +1014,47 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   modalContent: {
-    width: '90%',
-    backgroundColor: 'white',
+    width: "90%",
+    backgroundColor: "white",
     borderRadius: 10,
     padding: 20,
-    maxHeight: '80%',
+    maxHeight: "80%",
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
-    color: '#2C3E50',
-    textAlign: 'center',
+    color: "#2C3E50",
+    textAlign: "center",
   },
   altLessonItem: {
     padding: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: "#eee",
   },
   altLessonHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 5,
   },
   altClassNo: {
-    fontWeight: 'bold',
-    color: '#2C3E50',
+    fontWeight: "bold",
+    color: "#2C3E50",
   },
   altDay: {
-    color: '#7F8C8D',
-    fontWeight: '500',
+    color: "#7F8C8D",
+    fontWeight: "500",
   },
   altTime: {
-    color: '#34495E',
+    color: "#34495E",
     marginBottom: 3,
   },
   altVenue: {
-    color: '#7F8C8D',
+    color: "#7F8C8D",
   },
 });

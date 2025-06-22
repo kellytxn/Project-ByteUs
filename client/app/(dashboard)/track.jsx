@@ -834,16 +834,13 @@ const Track = () => {
                           ]}
                         >
                           <View style={styles.categoryHeaderContent}>
-                            <View>
+                            <View style={styles.categoryInfo}>
                               <Text
                                 style={styles.header}
                                 numberOfLines={2}
                                 ellipsizeMode="tail"
                               >
                                 {title}
-                              </Text>
-                              <Text style={styles.arrow}>
-                                {expandedCategories[title] ? "▼" : "▶"}
                               </Text>
                             </View>
 
@@ -856,8 +853,19 @@ const Track = () => {
                                     backgroundColor: "rgb(178, 203, 219)",
                                   },
                                 ]}
-                              />
+                              >
+                                {/* Optional: Add text inside progress bar */}
+                                {stats.percentage >= 0 && (
+                                  <Text style={styles.progressBarText}>
+                                    {stats.completedUnits}/{stats.totalUnits}
+                                  </Text>
+                                )}
+                              </View>
                             </View>
+
+                            <Text style={styles.arrow}>
+                              {expandedCategories[title] ? "▼" : "▶"}
+                            </Text>
                           </View>
                         </Pressable>
                       );
@@ -1267,7 +1275,7 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   progressBarContainer: {
-    height: 10,
+    height: 15,
     backgroundColor: "#E0E0E0",
     borderRadius: 3,
     overflow: "hidden",
@@ -1276,11 +1284,19 @@ const styles = StyleSheet.create({
   progressBar: {
     height: "100%",
     borderRadius: 3,
+    justifyContent: "center",
   },
   arrow: {
     alignSelf: "flex-end",
     fontSize: 16,
     color: "#E0E0E0",
     marginBottom: 8,
+  },
+  progressBarText: {
+    position: "absolute",
+    right: 2.5,
+    color: "#2E2E2E",
+    fontSize: 10,
+    fontWeight: "bold",
   },
 });

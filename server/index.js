@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const helmet = require("helmet");
 const cors = require("cors");
@@ -5,15 +6,13 @@ const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const nusmods = require('./nusmods');
+const nusmods = require("./nusmods");
 const ga = require("./timetableGA");
 
 const app = express();
 
-const mongoUrl =
-  "mongodb+srv://kellytttan:T0513663b@cluster0.2vbexus.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-
-const JWT_SECRET = "234tychsbdc76euwy3456uytfvbnjjgfe45t6yujhj";
+const mongoUrl = process.env.MONGO_URI;
+const JWT_SECRET = process.env.JWT_SECRET;
 
 mongoose.connect(mongoUrl).then(() => {
   console.log("Database connected");
@@ -338,16 +337,12 @@ app.post("/timetableGen", async (req, res) => {
     for (const mod of modCodes) {
       modsData[mod] = await nusmods.fetchModTimetable(acadYear, mod, semester);
     }
- 
+
     let population = ga.generatePopulation(modCodes, modsData);
 
     let generations = 100;
     for (let gen = 0; gen < generations; gen++) {
-      population = ga.evolve(
-        population,
-        preferences,
-        modsData
-      );
+      population = ga.evolve(population, preferences, modsData);
     }
 
     let bestTimetable = null;
@@ -359,17 +354,17 @@ app.post("/timetableGen", async (req, res) => {
         bestScore = score;
       }
     }
-    
+
     if (!bestTimetable || bestScore === -Infinity) {
       return res.status(404).json({
         status: "error",
-        data: "No valid timetable found with given constraints"
+        data: "No valid timetable found with given constraints",
       });
     }
 
     return res.status(200).json({
       status: "ok",
-      data: bestTimetable
+      data: bestTimetable,
     });
   } catch (error) {
     console.error("Update user error:", error);
@@ -382,7 +377,6 @@ app.post("/timetableGen", async (req, res) => {
     });
   }
 });
-
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, "0.0.0.0", () => {
