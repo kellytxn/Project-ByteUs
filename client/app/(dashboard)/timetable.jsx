@@ -26,7 +26,7 @@ const Timetable = () => {
   const [selectedMods, setSelectedMods] = useState([]); //all picked mods
   const [totalMCs, setTotalMCs] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [academicYear, setAcademicYear] = useState("2023-2024"); //use ay2023-2024 for now
+  const [academicYear, setAcademicYear] = useState("2024-2025"); //use ay2023-2024 for now
   const [userData, setUserData] = useState(null);
   const [userDataLoading, setUserDataLoading] = useState(true);
   const [userPassedMods, setUserPassedMods] = useState([]);

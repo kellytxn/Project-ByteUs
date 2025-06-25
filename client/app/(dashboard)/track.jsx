@@ -503,7 +503,7 @@ const Track = () => {
       setIsSearchingNUSMods(true);
       try {
         const response = await axios.get(
-          `https://api.nusmods.com/v2/2023-2024/modules/${searchTerm
+          `https://api.nusmods.com/v2/2024-2025/modules/${searchTerm
             .trim()
             .toUpperCase()}.json`
         );
