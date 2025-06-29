@@ -1,8 +1,10 @@
 import React from "react";
 import { render, waitFor } from "@testing-library/react-native";
+import { NavigationContainer } from "@react-navigation/native";
 import Track from "../app/(dashboard)/track.jsx";
 import axios from "axios";
 
+// Mock AsyncStorage
 jest.mock("@react-native-async-storage/async-storage", () => ({
   getItem: jest.fn((key) => {
     if (key === "token") {
@@ -16,7 +18,13 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
   getAllKeys: jest.fn(() => Promise.resolve([])),
 }));
 
+// Mock axios
 jest.mock("axios");
+
+// Helper to wrap component in NavigationContainer
+const renderWithNavigation = (ui) => {
+  return render(<NavigationContainer>{ui}</NavigationContainer>);
+};
 
 describe("Track Component", () => {
   beforeEach(() => {
@@ -24,8 +32,8 @@ describe("Track Component", () => {
   });
 
   it("shows loading indicator initially", () => {
-    axios.post.mockReturnValue(new Promise(() => {}));
-    const { getByTestId } = render(<Track />);
+    axios.post.mockReturnValue(new Promise(() => {})); // never resolves
+    const { getByTestId } = renderWithNavigation(<Track />);
     expect(getByTestId("activity-indicator")).toBeTruthy();
   });
 
@@ -48,7 +56,7 @@ describe("Track Component", () => {
       },
     });
 
-    const { findByText } = render(<Track />);
+    const { findByText } = renderWithNavigation(<Track />);
     expect(await findByText("Core")).toBeTruthy();
     expect(await findByText("Math and Science")).toBeTruthy();
   });
@@ -58,13 +66,16 @@ describe("Track Component", () => {
       .spyOn(console, "error")
       .mockImplementation(() => {});
     axios.post.mockResolvedValue({ data: { success: false, data: "fail" } });
-    render(<Track />);
+
+    renderWithNavigation(<Track />);
+
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "Failed to fetch modules:",
         "fail"
       );
     });
+
     consoleErrorSpy.mockRestore();
   });
 
@@ -73,13 +84,16 @@ describe("Track Component", () => {
       .spyOn(console, "error")
       .mockImplementation(() => {});
     axios.post.mockRejectedValue(new Error("Network Error"));
-    render(<Track />);
+
+    renderWithNavigation(<Track />);
+
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "Error fetching modules:",
         expect.any(Error)
       );
     });
+
     consoleErrorSpy.mockRestore();
   });
 });
