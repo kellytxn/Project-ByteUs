@@ -21,7 +21,6 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 // Mock axios
 jest.mock("axios");
 
-// Helper to wrap component in NavigationContainer
 const renderWithNavigation = (ui) => {
   return render(<NavigationContainer>{ui}</NavigationContainer>);
 };
@@ -32,7 +31,7 @@ describe("Track Component", () => {
   });
 
   it("shows loading indicator initially", () => {
-    axios.post.mockReturnValue(new Promise(() => {})); // never resolves
+    axios.post.mockReturnValue(new Promise(() => {}));
     const { getByTestId } = renderWithNavigation(<Track />);
     expect(getByTestId("activity-indicator")).toBeTruthy();
   });

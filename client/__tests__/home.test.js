@@ -20,10 +20,8 @@ jest.mock("expo-router", () => ({
 
 describe("Home Component", () => {
   beforeEach(() => {
-    // Clear all mocks before each test
     jest.clearAllMocks();
 
-    // Mock AsyncStorage to return a token
     AsyncStorage.getItem.mockImplementation((key) => {
       if (key === "token") return Promise.resolve("mock-token");
       return Promise.resolve(null);
@@ -31,7 +29,6 @@ describe("Home Component", () => {
   });
 
   it('displays "Welcome back," and user name when data loads successfully', async () => {
-    // Mock successful API response
     axios.post.mockImplementation((url) => {
       if (url.includes("/userData")) {
         return Promise.resolve({
@@ -56,13 +53,11 @@ describe("Home Component", () => {
       </NavigationContainer>
     );
 
-    // Wait for the component to finish loading and rendering
     await waitFor(() => {
       expect(getByText("Welcome back,")).toBeTruthy();
       expect(getByText("Kelly")).toBeTruthy();
     });
 
-    // Verify the API was called correctly
     expect(axios.post).toHaveBeenCalledWith(
       expect.stringContaining("/userData"),
       { token: "mock-token" }
@@ -70,7 +65,6 @@ describe("Home Component", () => {
   });
 
   it("displays error message when API call fails", async () => {
-    // Mock failed API response
     axios.post.mockRejectedValue(new Error("Network error"));
 
     const { getByText, queryByText } = render(
@@ -79,7 +73,6 @@ describe("Home Component", () => {
       </NavigationContainer>
     );
 
-    // Wait for the error state
     await waitFor(() => {
       expect(queryByText("Welcome back,")).toBeNull();
       expect(queryByText("Kelly")).toBeNull();
