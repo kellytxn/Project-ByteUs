@@ -858,12 +858,11 @@ const Track = () => {
                                   },
                                 ]}
                               >
-                                {/*
                                 {stats.percentage >= 0 && (
                                   <Text style={styles.progressBarText}>
                                     {stats.completedUnits}/{stats.totalUnits}
                                   </Text>
-                                )} */}
+                                )}
                               </View>
                             </View>
 

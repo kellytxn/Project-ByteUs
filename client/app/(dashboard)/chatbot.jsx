@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -18,6 +19,7 @@ import { useCallback } from "react";
 import { BACKEND_URL } from "../../config";
 
 const GEMINI_API_KEY = "AIzaSyBryT1JtHupeokQTfLZN-4ECCTo20kZEt4";
+const USER_AVATAR = require("../../assets/Default.png.jpeg");
 
 //Handle formatting
 const renderFormattedText = (text) => {
@@ -116,6 +118,7 @@ const Chatbot = () => {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [welcomeMessage, setWelcomeMessage] = useState(null);
+  const [profilePic, setProfilePic] = useState(null);
   const flatListRef = useRef(null);
 
   useFocusEffect(
@@ -156,6 +159,14 @@ const Chatbot = () => {
       fetchUserData();
     }, [])
   );
+
+  useEffect(() => {
+    if (userData?.email) {
+      AsyncStorage.getItem(`profilePic_${userData.email}`).then((uri) => {
+        if (uri) setProfilePic(uri);
+      });
+    }
+  }, [userData]);
 
   useEffect(() => {
     if (messages.length === 0) return;
@@ -388,23 +399,37 @@ const Chatbot = () => {
   };
 
   const renderMessageItem = ({ item }) => {
+    const isUser = item.sender === "user";
+
     return (
       <View
         style={[
-          styles.message,
-          item.sender === "user" ? styles.userMessage : styles.geminiMessage,
+          styles.messageRow,
+          { flexDirection: isUser ? "row-reverse" : "row" },
         ]}
       >
-        <Text
+        {isUser && (
+          <Image
+            source={profilePic ? { uri: profilePic } : USER_AVATAR}
+            style={styles.avatar}
+          />
+        )}
+
+        <View
           style={[
-            styles.messageText,
-            item.sender === "user"
-              ? styles.userMessageText
-              : styles.geminiMessageText,
+            styles.message,
+            isUser ? styles.userMessage : styles.geminiMessage,
           ]}
         >
-          {renderFormattedText(item.text)}
-        </Text>
+          <Text
+            style={[
+              styles.messageText,
+              isUser ? styles.userMessageText : styles.geminiMessageText,
+            ]}
+          >
+            {renderFormattedText(item.text)}
+          </Text>
+        </View>
       </View>
     );
   };
@@ -571,5 +596,16 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     color: "#555",
+  },
+  messageRow: {
+    alignItems: "flex-start",
+    marginBottom: 5,
+  },
+
+  avatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    marginHorizontal: 1.5,
   },
 });
