@@ -158,11 +158,15 @@ const Chatbot = () => {
   );
 
   useEffect(() => {
-    if (flatListRef.current && messages.length > 0) {
-      setTimeout(() => {
+    if (messages.length === 0) return;
+
+    const timer = setTimeout(() => {
+      if (flatListRef.current) {
         flatListRef.current.scrollToEnd({ animated: true });
-      }, 100);
-    }
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [messages]);
 
   const fetchGeminiResponse = async (prompt) => {
@@ -480,7 +484,11 @@ const Chatbot = () => {
             onChangeText={messageSave}
             placeholderTextColor="#444"
           />
-          <TouchableOpacity style={styles.button} onPress={handleButtonClick}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleButtonClick}
+            accessibilityRole="button"
+          >
             <Ionicons name="arrow-up" size={24} color="white" />
           </TouchableOpacity>
         </View>

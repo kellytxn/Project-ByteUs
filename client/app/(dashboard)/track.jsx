@@ -552,7 +552,11 @@ const Track = () => {
                     marginTop: screenHeight / 2.45,
                   }}
                 >
-                  <ActivityIndicator size="large" color="#AE96C7" />
+                  <ActivityIndicator
+                    testID="activity-indicator"
+                    size="large"
+                    color="#AE96C7"
+                  />
                   <Text style={{ marginTop: 10, color: "#555" }}>
                     Loading...
                   </Text>
