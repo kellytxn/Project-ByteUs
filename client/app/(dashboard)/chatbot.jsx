@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -15,7 +15,6 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
-import { useCallback } from "react";
 import { BACKEND_URL } from "../../config";
 
 const GEMINI_API_KEY = "AIzaSyBryT1JtHupeokQTfLZN-4ECCTo20kZEt4";

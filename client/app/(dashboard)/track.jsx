@@ -15,6 +15,7 @@ import {
   Platform,
 } from "react-native";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { PieChart, LineChart } from "react-native-chart-kit";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -49,9 +50,59 @@ const Track = () => {
   const [availableCategories, setAvailableCategories] = useState([]);
   const [isCategoryFocused, setIsCategoryFocused] = useState(false);
   const [expandedCategories, setExpandedCategories] = useState({});
+  const [userData, setUserData] = useState(null);
+  const [mcsToGrad, setMcsToGrad] = useState(null);
 
   const scrollViewRef = useRef(null);
   const formStartRef = useRef(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const fetchData = async () => {
+        try {
+          const token = await AsyncStorage.getItem("token");
+          if (!token) throw new Error("No token found");
+
+          // Fetch user data
+          const response = await fetch(`${BACKEND_URL}/userData`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          });
+          const data = await response.json();
+
+          if (!isActive) return;
+
+          if (data.status === "ok") {
+            setUserData(data.data);
+
+            const saved = await AsyncStorage.getItem(
+              `mcsToGraduate_${data.data.email}`
+            );
+
+            const savedNumber = Number(saved);
+            if (saved && !isNaN(savedNumber) && savedNumber > 0) {
+              setMcsToGrad(savedNumber);
+            } else {
+              setMcsToGrad(null);
+            }
+          } else {
+            throw new Error(data.data || "Failed to fetch user data");
+          }
+        } catch (error) {
+          console.error("Error fetching user data or MCs:", error);
+        }
+      };
+
+      fetchData();
+
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
 
   // Fetch user modules
   useEffect(() => {
@@ -285,6 +336,8 @@ const Track = () => {
   );
 
   // Pie chart
+  const total = mcsToGrad ?? totalUnits; // Use mcsToGrad if defined, else fallback to totalUnits
+
   const chartData = [
     {
       name: "",
@@ -295,7 +348,7 @@ const Track = () => {
     },
     {
       name: "",
-      population: totalUnits - completedUnits,
+      population: total - completedUnits,
       color: "rgba(178, 203, 219, 0.2)",
       legendFontColor: "transparent",
       legendFontSize: 0,
@@ -617,7 +670,7 @@ const Track = () => {
                       }}
                     >
                       <Text style={{ fontWeight: "bold", fontSize: 16 }}>
-                        {completedUnits}/{totalUnits} MCs
+                        {completedUnits}/{mcsToGrad || totalUnits} MCs
                       </Text>
                       <Text style={{ fontWeight: "bold", fontSize: 16 }}>
                         completed

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -10,6 +10,7 @@ import {
   TextInput,
   Alert,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -28,7 +29,42 @@ const Home = () => {
     course: "",
     year: "",
     semester: "",
+    mcsToGraduate: "",
   });
+  const [totalModuleUnits, setTotalModuleUnits] = useState(0);
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchUserData = async () => {
+        try {
+          const token = await AsyncStorage.getItem("token");
+          if (!token) throw new Error("No token found");
+
+          const res = await axios.post(`${BACKEND_URL}/userData`, { token });
+          const freshUserData = res.data.data;
+
+          setUserData(freshUserData);
+
+          // Calculate total units after fetching new user data
+          if (freshUserData?.modules) {
+            const total = freshUserData.modules.reduce(
+              (sum, module) => sum + Number(module.units || 0),
+              0
+            );
+            setTotalModuleUnits(total);
+          } else {
+            setTotalModuleUnits(0);
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+          setUserData(null);
+          setTotalModuleUnits(0);
+        }
+      };
+
+      fetchUserData();
+    }, [])
+  );
 
   const router = useRouter();
 
@@ -53,6 +89,17 @@ const Home = () => {
         `profilePic_${res.data.data.email}`
       );
       if (savedImage) setProfilePic(savedImage);
+      const savedMCs = await AsyncStorage.getItem(
+        `mcsToGraduate_${res.data.data.email}`
+      );
+
+      // Check for existing MCs in local storage
+      if (savedMCs) {
+        setFormData((prev) => ({
+          ...prev,
+          mcsToGraduate: savedMCs,
+        }));
+      }
     } catch (err) {
       setError("Failed to fetch user data.");
     } finally {
@@ -96,31 +143,64 @@ const Home = () => {
 
   useEffect(() => {
     if (userData) {
-      setFormData({
+      setFormData((prev) => ({
         name: userData.name,
         course: userData.course,
         year: userData.year.toString(),
         semester: userData.semester.toString(),
-      });
+        mcsToGraduate: prev.mcsToGraduate || "",
+      }));
     }
   }, [userData]);
 
   const handleSave = async () => {
-    const { name, course, year, semester } = formData;
+    const { name, course, year, semester, mcsToGraduate } = formData;
 
     if (!name || !course || !year || !semester) {
       Alert.alert("Please fill in all fields before saving.");
       return;
     }
+
+    if (mcsToGraduate && mcsToGraduate.toLowerCase() !== "na") {
+      const mcsNumber = Number(mcsToGraduate);
+      if (isNaN(mcsNumber)) {
+        Alert.alert("Please enter a valid number for MCs to Graduate.");
+        return;
+      }
+
+      if (mcsNumber < totalModuleUnits) {
+        Alert.alert(
+          "Invalid MCs to Graduate",
+          `MCs to Graduate (${mcsNumber}) cannot be less than total units of modules (${totalModuleUnits}) created.`
+        );
+        return;
+      }
+    }
+
     try {
       const token = await AsyncStorage.getItem("token");
 
-      //Edit user data
+      if (!mcsToGraduate || mcsToGraduate.toLowerCase() === "na") {
+        await AsyncStorage.removeItem(`mcsToGraduate_${userData.email}`);
+      } else {
+        await AsyncStorage.setItem(
+          `mcsToGraduate_${userData.email}`,
+          mcsToGraduate
+        );
+      }
+
+      // Save other form fields to backend
+      const { mcsToGraduate: _, ...formDataToSend } = formData;
       const res = await axios.post(`${BACKEND_URL}/updateUserData`, {
         token,
-        ...formData,
+        ...formDataToSend,
       });
+
       setUserData(res.data.data);
+      setFormData((prev) => ({
+        ...prev,
+        mcsToGraduate: mcsToGraduate,
+      }));
       setIsEditing(false);
     } catch (err) {
       setError("Failed to update data");
@@ -219,7 +299,7 @@ const Home = () => {
             <View style={styles.divider} />
 
             <View style={styles.infoRow}>
-              <Ionicons name="school" size={22} color="#AE96C7" />
+              <Ionicons name="time" size={22} color="#AE96C7" />
               <Text style={styles.infoLabel}>Year:</Text>
               {isEditing ? (
                 <TextInput
@@ -251,6 +331,32 @@ const Home = () => {
                 />
               ) : (
                 <Text style={styles.infoValue}>{userData.semester}</Text>
+              )}
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.infoRow}>
+              <Ionicons name="school" size={22} color="#AE96C7" />
+              <Text style={styles.infoLabel}>MCs Required:</Text>
+              {isEditing ? (
+                <TextInput
+                  value={formData.mcsToGraduate}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, mcsToGraduate: text })
+                  }
+                  style={styles.input}
+                  keyboardType="numeric"
+                />
+              ) : (
+                <Text style={styles.infoValue}>
+                  {isEditing
+                    ? formData.mcsToGraduate
+                    : isNaN(Number(formData.mcsToGraduate)) ||
+                      formData.mcsToGraduate === ""
+                    ? "N/A"
+                    : formData.mcsToGraduate}
+                </Text>
               )}
             </View>
 
