@@ -33,6 +33,8 @@ const Home = () => {
   });
   const [totalModuleUnits, setTotalModuleUnits] = useState(0);
 
+  const router = useRouter();
+
   useFocusEffect(
     useCallback(() => {
       const fetchUserData = async () => {
@@ -65,8 +67,6 @@ const Home = () => {
       fetchUserData();
     }, [])
   );
-
-  const router = useRouter();
 
   async function getData() {
     try {
