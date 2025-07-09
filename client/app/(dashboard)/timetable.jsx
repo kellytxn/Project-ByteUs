@@ -412,15 +412,13 @@ const Timetable = () => {
       Object.keys(examsByDate).forEach((date) => {
         const exams = examsByDate[date];
         if (exams.length > 1) {
+          sameDay.push(exams);
           exams.sort((a, b) => a.startTime - b.startTime);
 
           for (let i = 0; i < exams.length - 1; i++) {
             if (exams[i].startTime < exams[i + 1].endTime && 
               exams[i].endTime > exams[i + 1].startTime) {
                 clashes.push([exams[i], exams[i + 1]]);
-            } else {
-              sameDay.push(exams);
-              break;
             }
           }
         }
