@@ -367,13 +367,47 @@ app.post("/timetableGen", async (req, res) => {
       data: bestTimetable,
     });
   } catch (error) {
-    console.error("Update user error:", error);
+    console.error("Timetable generation error:", error);
     if (error.name === "JsonWebTokenError") {
       return res.status(401).json({ status: "error", data: "Invalid token" });
     }
     return res.status(500).json({
       status: "error",
       data: "Failed to generate timetable",
+    });
+  }
+});
+
+app.post("/timetableSnapshot", async (req, res) => {
+  const { token, timetable } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ status: "error", data: "Token is required" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findOne({ email: decoded.email });
+
+    if (!user) {
+      return res.status(404).json({ status: "error", data: "User not found" });
+    }
+
+    user.timetable = BinData(timetable.slice(1));
+    await user.save();
+
+    res.status(200).json({ 
+      status: "success", 
+      data: "Timetable snapshot saved successfully" 
+    });
+  } catch (error) {
+    console.error("Timetable snapshot save error:", error);
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ status: "error", data: "Invalid token" });
+    }
+    return res.status(500).json({
+      status: "error",
+      data: "Failed to save timetable snapshot",
     });
   }
 });

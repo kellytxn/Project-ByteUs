@@ -12,8 +12,9 @@ import {
   View,
   Pressable,
 } from "react-native";
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import axios from "axios";
+import { captureRef } from "react-native-view-shot";
 import Icon from "react-native-vector-icons/FontAwesome";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -26,7 +27,7 @@ const Timetable = () => {
   const [selectedMods, setSelectedMods] = useState([]); //all picked mods
   const [totalMCs, setTotalMCs] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [academicYear, setAcademicYear] = useState("2024-2025"); //use ay2024-2025
+  const [academicYear, setAcademicYear] = useState("2025-2026"); //use ay2025-2026
   const [userData, setUserData] = useState(null);
   const [userDataLoading, setUserDataLoading] = useState(true);
   const [userPassedMods, setUserPassedMods] = useState([]);
@@ -36,6 +37,9 @@ const Timetable = () => {
   const [allClassByType, setAllClassByType] = useState({});
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [showLessonModal, setShowLessonModal] = useState(false);
+  const [examInfo, setExamInfo] = useState([]);
+  const [examClash, setExamClash] = useState([]);
+  const [sameDayExam, setSameDayExam] = useState([]);
   const [preferences, setPreferences] = useState([
     { id: "noMon", label: "No classes on Monday", selected: false, rank: null },
     {
@@ -70,6 +74,7 @@ const Timetable = () => {
       rank: null,
     },
   ]);
+  const timetableSnapshot = useRef();
 
   async function getModsData() {
     try {
@@ -139,44 +144,7 @@ const Timetable = () => {
         ? modData.semesters.toString().includes(userData.semester.toString())
         : false;
 
-      //check if completed prereqs & not completed preclusions
-      const checkPastMods = async () => {
-        try {
-          const response = await axios.get(
-            `https://api.nusmods.com/v2/${academicYear}/modules/${modData.moduleCode.toUpperCase()}.json`
-          );
-
-          if (response.data) {
-            const modInfo = response.data;
-            if (modInfo.prerequisite && modInfo.preclusion) {
-              return (
-                userPassedMods.some((passedMod) =>
-                  modInfo.prerequisite.includes(passedMod)
-                ) &&
-                userPassedMods.some(
-                  (passedMod) => !modInfo.preclusion.includes(passedMod)
-                )
-              );
-            } else if (modInfo.preclusion) {
-              return userPassedMods.some(
-                (passedMod) => !modInfo.preclusion.includes(passedMod)
-              );
-            }
-            if (modInfo.prerequisite) {
-              return userPassedMods.some((passedMod) =>
-                modInfo.prerequisite.includes(passedMod)
-              );
-            } else {
-              return true;
-            }
-          }
-        } catch (error) {
-          Alert.alert("Error", "Failed to load modules");
-          console.error("Module fetch error:", error);
-        }
-      };
-
-      return matchQuery && matchSem && checkPastMods;
+      return matchQuery && matchSem;
     });
 
     setFilteredMods(filtered);
@@ -245,7 +213,6 @@ const Timetable = () => {
         .map((p) => ({ id: p.id, rank: p.rank }));
 
       const selectedModCodes = selectedMods.map((mod) => mod.moduleCode);
-      console.log(userData.semester);
       const response = await axios.post(`${BACKEND_URL}/timetableGen`, {
         token,
         modCodes: selectedModCodes, //array of module codes
@@ -261,6 +228,22 @@ const Timetable = () => {
       Alert.alert("Error", "Failed to fetch timetable data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveTimetable = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) throw new Error("No token found");
+
+      const result = await captureRef(timetableSnapshot, { result: 'base64'});
+      //console.log(result);
+      const response = await axios.post(`${BACKEND_URL}/timetableSnapshot`, {
+        token, timetable: result,
+      });
+    } catch (error) {
+      console.error("Error saving timetable:", error);
+      Alert.alert("Error", "Failed to save timetable");
     }
   };
 
@@ -339,11 +322,8 @@ const Timetable = () => {
           let response = await axios.get(
             `https://api.nusmods.com/v2/${academicYear}/modules/${mod.moduleCode}.json`
           );
-          let allSemClasses = response.data.semesterData.filter((info) =>
-            info.semester
-              ? info.semester.toString() === userData.semester.toString()
-              : false
-          );
+          let allSemClasses = response.data.semesterData
+            .filter((info) => info.semester.toString() === userData.semester.toString());
           let allClasses = allSemClasses[0].timetable;
           let classesByType = {};
 
@@ -377,6 +357,89 @@ const Timetable = () => {
     }
   }, [selectedMods, academicYear]);
 
+  useEffect(() => {
+    const sortExams = async () => {
+      if (!userData) return;
+
+      let allExamInfo = [];
+      for (const mod of selectedMods) {
+        try {
+          const response = await axios.get(
+            `https://api.nusmods.com/v2/${academicYear}/modules/${mod.moduleCode}.json`
+          );
+          let examDate = response.data.semesterData
+            .find(info => info.semester.toString() === userData.semester.toString()).examDate;
+          let examDuration = response.data.semesterData
+            .find(info => info.semester.toString() === userData.semester.toString()).examDuration; //in mins
+          
+          let startTime = new Date(examDate);
+          let endTime = new Date(startTime.getTime() + examDuration * 60 * 1000); //convert mins to ms
+         
+          allExamInfo.push({
+            modCode: mod.moduleCode,
+            examDate: startTime.toISOString().slice(0, 10),
+            startTime: startTime,
+            endTime: endTime,
+          })
+        } catch (error) {
+          console.error("Error fetching exam info:", error);
+        }
+      }
+      setExamInfo(allExamInfo);
+    };
+
+    if (selectedMods.length > 0) {
+      sortExams();
+    } else {
+      setExamInfo([]);
+    }
+  }, [selectedMods, academicYear]);
+
+  useEffect(() => {
+    if (examInfo.length > 0) {
+      let examsByDate = {};
+      examInfo.forEach((exam) => {
+        let examDate = exam.examDate;
+        if (!examsByDate[examDate]) {
+          examsByDate[examDate] = [];
+        }
+        examsByDate[examDate].push(exam);
+      });
+
+      let clashes = [];
+      let sameDay = [];
+
+      Object.keys(examsByDate).forEach((date) => {
+        const exams = examsByDate[date];
+        if (exams.length > 1) {
+          exams.sort((a, b) => a.startTime - b.startTime);
+
+          for (let i = 0; i < exams.length - 1; i++) {
+            if (exams[i].startTime < exams[i + 1].endTime && 
+              exams[i].endTime > exams[i + 1].startTime) {
+                clashes.push([exams[i], exams[i + 1]]);
+            } else {
+              sameDay.push(exams);
+              break;
+            }
+          }
+        }
+      });
+      setExamClash(clashes);
+      setSameDayExam(sameDay);
+    }
+  }, [examInfo]);
+
+  useEffect(() => {
+    if (examClash.length > 0) {
+      Alert.alert(
+        "Exam Clash Detected!",
+        "You have exams scheduled at the same time. Please review your selected modules.",
+        [{ text: "OK" }]
+      );
+    }
+  }, [examClash]);
+
   const DropdownMods = ({ item }) => (
     <TouchableOpacity
       style={styles.dropdownItem}
@@ -390,6 +453,53 @@ const Timetable = () => {
     </TouchableOpacity>
   );
 
+  const generateExamGridData = () => {
+    if (examInfo.length === 0) return [];
+    
+    const examDates = [...new Set(examInfo.map(e => e.examDate))].sort();
+    const startDate = new Date(examDates[0]);
+    const endDate = new Date(examDates[examDates.length - 1]);
+    
+    const firstMonday = new Date(startDate);
+    firstMonday.setDate(startDate.getDate() - (startDate.getDay() + 6) % 7);
+    
+    const gridData = [];
+    const current = new Date(firstMonday);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const displayedMonths = {};
+
+    while (current <= endDate) {
+      const week = [];
+
+      for (let i = 0; i < 7; i++) {
+        const date = current.toISOString().slice(0, 10);
+        const exams = examInfo.filter(e => e.examDate === date);
+        const dayOfMonth = current.getDate();
+        const month = current.getMonth();
+
+        let displayDate = '';
+        if (dayOfMonth === 1 || !displayedMonths[month]) {
+          displayDate = `${dayOfMonth < 10 ? '0' : ''}${dayOfMonth}-${months[month]}`;
+          displayedMonths[month] = true;
+        } else {
+          displayDate = `${dayOfMonth < 10 ? '0' : ''}${dayOfMonth}`;
+        }
+
+        week.push({
+          date: date,
+          display: displayDate,
+          exams: exams.sort((a, b) => a.startTime - b.startTime)
+        });
+        
+        current.setDate(current.getDate() + 1);
+      }
+      
+      gridData.push(week);
+    }
+    
+    return gridData;
+  };
+
   const formatTime = (timeStr) => {
     const time = timeStr.toString().padStart(4, "0");
     const hours = parseInt(time.substring(0, 2));
@@ -397,6 +507,22 @@ const Timetable = () => {
     const period = hours >= 12 ? "PM" : "AM";
     const displayHours = hours % 12 || 12;
     return `${displayHours}:${minutes} ${period}`;
+  };
+
+  const formatExamTime = (date) => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${minutes} ${period}`;
+  };
+
+  const timeToMinutes = (timeStr) => {
+    if (!timeStr) return 0;
+    const padded = timeStr.toString().padStart(4, '0');
+    const hours = parseInt(padded.substring(0, 2));
+    const minutes = parseInt(padded.substring(2));
+    return hours * 60 + minutes;
   };
 
   const groupLessonsByDay = () => {
@@ -460,7 +586,7 @@ const Timetable = () => {
 
             <FlatList
               data={alternativeLessons
-                // Sort by day
+                //sort by day
                 .sort((a, b) => {
                   const daysOrder = [
                     "Monday",
@@ -505,10 +631,10 @@ const Timetable = () => {
   const colorCache = {};
 
   const getModuleColor = (moduleCode) => {
-    // Return color if exists
+    //return color if exists
     if (colorCache[moduleCode]) return colorCache[moduleCode];
 
-    // Generate new color
+    //generate new color
     let hash = 0;
     for (let i = 0; i < moduleCode.length; i++) {
       hash = moduleCode.charCodeAt(i) + ((hash << 7) - hash);
@@ -523,77 +649,120 @@ const Timetable = () => {
 
     const color = `hsl(${h}, ${s}%, ${l}%)`;
 
-    // Cache the color
+    //cache the color
     colorCache[moduleCode] = color;
     return color;
   };
 
-  const LessonCard = ({ lesson }) => {
+  const timetableViewer = () => {
+    const { width } = Dimensions.get('window');
+    const dayWidth = (width - 70) / 5;
+    const timetableStart = 8; //8am
+    const timetableEnd = 17; //6pm
+    const hourHeight = 60;
+    const totalHours = timetableEnd - timetableStart;
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
     return (
-      <TouchableOpacity
-        onPress={() => handleLessonPress(lesson)}
-        activeOpacity={0.7}
-        key={`${lesson.modCode}-${lesson.lessonType}`}
-      >
-        <View
-          style={[
-            styles.lessonCard,
-            { backgroundColor: getModuleColor(lesson.modCode) },
-          ]}
-        >
-          <View style={styles.lessonHeader}>
-            <Text style={styles.moduleCode}>
-              {lesson?.modCode ?? "Unknown Module"}
-            </Text>
-            <Text style={styles.lessonType}>
-              {lesson?.lessonType ?? "Unknown Type"}
-            </Text>
-          </View>
-          <Text style={styles.timeSlot}>
-            {lesson?.startTime && lesson?.endTime
-              ? `${formatTime(lesson.startTime)} - ${formatTime(
-                  lesson.endTime
-                )}`
-              : "Time Unavailable"}
-          </Text>
-          <Text style={styles.venue}>{lesson.venue}</Text>
+      <View ref={timetableSnapshot} style={styles.timetableContainer}>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity
+            onPress={() => setTimetableView(false)}
+            style={styles.backButton}
+          >
+            <Icon name="arrow-left" size={20} color="#2C3E50" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => saveTimetable()}
+            style={styles.saveButton}
+          >
+            <Icon name="save" size={20} color="#000" />
+          </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+
+        <View style={styles.gridContainer}>
+          <View style={styles.timeLabelsColumn}>
+            <View style={[styles.timeLabel, styles.cornerSpace]} />
+              {Array.from({ length: totalHours + 1 }).map((_, i) => {
+                const hour = timetableStart + i;
+                const period = hour >= 12 ? "PM" : "AM";
+                const displayHour = hour % 12 || 12;
+            
+                return (
+                  <View 
+                    key={`time-${hour}`} 
+                    style={[styles.timeLabel, { height: hourHeight }]}
+                  >
+                    <Text style={styles.timeLabelText}>{`${displayHour}:00 ${period}`}</Text>
+                  </View>
+                );
+              })}
+            </View>
+
+            <View style={styles.daysSection}>
+              <View style={styles.dayHeadersRow}>
+                {days.map(day => (
+                  <View 
+                    key={day} 
+                    style={[styles.dayHeaderCell, { width: dayWidth }]}
+                  >
+                    <Text style={styles.dayHeaderText}>{shortformDay(day)}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={styles.hourLinesContainer}>
+                {Array.from({ length: totalHours + 2 }).map((_, i) => (
+                  <View
+                    key={`line-${i}`}
+                    style={[
+                      styles.hourLine,
+                      { top: i * hourHeight }
+                    ]}
+                  />
+                ))}
+              </View>
+
+              <View style={[styles.dayColumns, { height: (totalHours + 1) * hourHeight }]}>
+                {days.map(day => (
+                  <View 
+                    key={day} 
+                    style={[styles.dayColumn, { width: dayWidth }]}
+                  >
+                    {groupedLessons[day].map(lesson => {
+                      const startMinutes = timeToMinutes(lesson.startTime);
+                      const endMinutes = timeToMinutes(lesson.endTime);
+                      const top = ((startMinutes - timetableStart * 60) / 60) * hourHeight;
+                      const height = ((endMinutes - startMinutes) / 60) * hourHeight;
+                      
+                      return (
+                        <TouchableOpacity
+                          key={`${lesson.modCode}-${lesson.lessonType}`}
+                          style={[
+                            styles.timetableLessonCard,
+                            { 
+                              top,
+                              height,
+                              backgroundColor: getModuleColor(lesson.modCode)
+                            }
+                          ]}
+                          onPress={() => handleLessonPress(lesson)}
+                        >
+                          <Text style={styles.timetableLessonCode}>{lesson.modCode}</Text>
+                          <Text style={styles.timetableLessonType}>{lesson.lessonType}</Text>
+                          <Text style={styles.timetableLessonVenue}>{lesson.venue}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+            </View>
+        </View>
+      </View>
     );
   };
-
-  const dayColumn = (day) => (
-    <View key={day} style={styles.dayColumn}>
-      <Text style={styles.dayHeader}>{shortformDay(day)}</Text>
-      {groupedLessons[day].length > 0 ? (
-        groupedLessons[day].map((lesson, index) => (
-          <LessonCard
-            key={`${lesson.modCode}-${lesson.lessonType}-${index}`}
-            lesson={lesson}
-          />
-        ))
-      ) : (
-        <Text style={styles.noClassesText}>No classes</Text>
-      )}
-    </View>
-  );
-
-  const timetableViewer = () => (
-    <View style={styles.timetableContainer}>
-      <TouchableOpacity
-        onPress={() => setTimetableView(false)}
-        style={styles.backButton}
-      >
-        <Icon name="arrow-left" size={20} color="#2C3E50" />
-      </TouchableOpacity>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.daysContainer}>
-          {Object.keys(groupedLessons).map(dayColumn)}
-        </View>
-      </ScrollView>
-    </View>
-  );
 
   const generatorView = () => (
     <ScrollView
@@ -661,13 +830,80 @@ const Timetable = () => {
                   onPress={() => toggleModSelection(mod)}
                   style={styles.removeButton}
                 >
-                  <Icon name="times" size={16} color="#F44336" />
+                  <Icon name="times" size={16} color="#A9A9A9" />
                 </TouchableOpacity>
               </View>
             ))}
           </View>
         </View>
       )}
+
+      <View style={styles.examContainer}>
+        <Text style={styles.examTitle}>Total Exams: {examInfo.length}</Text>
+
+        {examClash.length > 0 && (
+          <View style={styles.examClashAlert}>
+            {examClash.map((clash, index) => (
+              <Text key={index} style={styles.examClashAlertMessage}>
+                {clash[0].modCode} and {clash[1].modCode} clash on {clash[0].examDate} {formatExamTime(clash[0].startTime)}
+              </Text>
+            ))}
+          </View>
+        )}
+
+        {sameDayExam.length > 0 && (
+          <View style={styles.sameDayAlert}>
+            {sameDayExam.map((exams, index) => (
+              <Text key={index} style={styles.sameDayAlertMessage}>
+                Multiple exams on {exams[0].examDate}: {exams.map(e => e.modCode).join(', ')}
+              </Text>
+            ))}
+          </View>
+        )}
+
+        {examInfo.length > 0 && (
+          <View style={styles.examGrid}>
+            <View style={styles.examGridRow}>
+              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                <View key={day} style={[styles.examGridCell, styles.examGridHeaderCell]}>
+                  <Text style={styles.examGridHeaderText}>{day}</Text>
+                </View>
+              ))}
+            </View>
+
+            {generateExamGridData().map((week, weekIndex) => (
+              <View key={`week-${weekIndex}`} style={styles.examGridRow}>               
+                {week.map((dayData, dayIndex) => (
+                  <View 
+                    key={`${weekIndex}-${dayIndex}`} 
+                    style={[styles.examGridCell, styles.examGridDateCell]}
+                  >
+                    <Text style={styles.dateText}>{dayData.display}</Text>
+                    
+                    {dayData.exams.map((exam) => (
+                      <View 
+                        key={`${exam.modCode}-${exam.startTime}`} 
+                        style={[
+                          styles.examCard,
+                          {
+                            backgroundColor: getModuleColor(exam.modCode),
+                            borderColor: getModuleColor(exam.modCode),
+                          },
+                        ]}
+                      >
+                        <Text style={styles.examModule}>{exam.modCode}</Text>
+                        <Text style={styles.examTime}>
+                          {formatExamTime(exam.startTime)} - {formatExamTime(exam.endTime)}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
 
       <View style={styles.preferencesContainer}>
         <View style={styles.preferencesHeader}>
@@ -860,7 +1096,7 @@ const styles = StyleSheet.create({
     padding: 3,
   },
   generateButton: {
-    backgroundColor: "#B2CBDB",
+    backgroundColor: "#9DBDCE",
     padding: 15,
     borderRadius: 10,
     alignItems: "center",
@@ -875,11 +1111,105 @@ const styles = StyleSheet.create({
     backgroundColor: "#A0A0A0",
     opacity: 0.7,
   },
+  examContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    flex: 1,
+    padding: 5,
+    marginTop: 15,
+    borderTopWidth: 2,
+    borderTopColor: "#B2CBDB",
+  },
+  examTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#2C3E50",
+    padding: 10,
+  },
+  examClashAlert: {
+    backgroundColor: '#FFEBEE',
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#F44336',
+  },
+  examClashAlertMessage: {
+    color: '#B71C1C',
+    fontSize: 13,
+  },
+  sameDayAlert: {
+    backgroundColor: '#FFF3E0',
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
+  sameDayAlertMessage: {
+    color: '#E65100',
+    fontSize: 13,
+  },
+  examGrid: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginTop: 5,
+  },
+  examGridRow: {
+    flexDirection: 'row',
+    flex: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  examGridCell: {
+    flex: 1,
+    borderRightWidth: 1,
+    borderRightColor: '#E0E0E0',
+    padding: 1,
+    backgroundColor: '#FFF',
+    justifyContent: 'flex-start', 
+  },
+  examGridHeaderCell: {
+    backgroundColor: '#F8F9FA',
+  },
+  examGridDateCell: {
+    minHeight: 60, 
+    justifyContent: 'flex-start',
+  },
+  examGridHeaderText: {
+    fontWeight: 'bold',
+    textAlign: 'center',
+    paddingVertical: 5,
+  },
+  dateText: {
+    textAlign: 'left',
+    marginBottom: 5,
+    fontSize: 12,
+  },
+  examCard: {
+    width: '100%', 
+    backgroundColor: '#F8F9FA',
+    padding: 4,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  examModule: {
+    fontWeight: '600',
+    fontSize: 10,
+  },
+  examTime: {
+    fontSize: 8,
+  },
   preferencesContainer: {
     backgroundColor: "#FFFFFF",
     borderRadius: 10,
     padding: 15,
     marginTop: 15,
+    borderTopWidth: 2,
+    borderTopColor: "#B2CBDB",
   },
   preferencesHeader: {
     flexDirection: "row",
@@ -937,80 +1267,123 @@ const styles = StyleSheet.create({
   },
   timetableContainer: {
     flex: 1,
-    padding: 15,
     paddingTop: 65,
+    backgroundColor: '#FFFFFF',
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
   },
   backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 15,
-    padding: 10,
+    paddingLeft: 15,
+    paddingBottom: 15,
   },
-  backText: {
-    marginLeft: 10,
-    fontSize: 16,
-    color: "#2C3E50",
-    fontWeight: "500",
+  saveButton: {
+    paddingRight: 15,
+    paddingBottom: 15,
   },
-  daysContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  gridContainer: {
+    flexDirection: 'row',
+    flex: 1,
+  },
+  timeLabelsColumn: {
+    width: 70,
+    zIndex: 2,
+    borderRightWidth: 1,
+    borderRightColor: '#EEE',
+  },
+  cornerSpace: {
+    height: 40,
+    borderBottomWidth: 1,
+    borderBottomColor: '#CCC',
+  },
+  timeLabel: {
+    justifyContent: 'flex-start',
+    paddingTop: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  timeLabelText: {
+    fontSize: 10,
+    color: '#707070',
+    textAlign: 'right',
+    paddingRight: 5,
+  },
+  daysSection: {
+    flex: 1,
+    position: 'relative',
+  },
+  dayHeadersRow: {
+    flexDirection: 'row',
+    height: 40,
+    borderBottomWidth: 1,
+    borderBottomColor: '#CCC',
+  },
+  dayHeaderCell: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRightWidth: 1,
+    borderRightColor: '#EEE',
+    backgroundColor: '#F9F9F9',
+  },
+  dayHeaderText: {
+    fontWeight: 'bold',
+    fontSize: 12,
+    color: '#2C3E50',
+  },
+  dayColumns: {
+    flexDirection: 'row',
+    position: 'relative',
   },
   dayColumn: {
-    width: Dimensions.get("window").width * 0.7,
-    marginRight: 15,
-    backgroundColor: "white",
-    borderRadius: 10,
-    padding: 15,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    position: 'relative',
+    borderRightWidth: 1,
+    borderRightColor: '#EEE',
   },
-  dayHeader: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#2C3E50",
-    marginBottom: 15,
-    textAlign: "center",
+  hourLinesContainer: {
+    position: 'absolute',
+    top: 40, 
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1, 
+  },
+  hourLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: '#E0E0E0',
     borderBottomWidth: 1,
-    borderBottomColor: "#ddd",
-    paddingBottom: 10,
+    borderBottomColor: '#EEE',
   },
-  lessonCard: {
-    backgroundColor: "#B2CBDB",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
+  timetableLessonCard: {
+    position: 'absolute',
+    left: 2,
+    right: 2,
+    padding: 4,
+    borderRadius: 4,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.1)',
+    zIndex: 3,
   },
-  moduleCode: {
-    fontWeight: "700",
-    fontSize: 16,
-    color: "#2D3748",
+  timetableLessonCode: {
+    fontWeight: '700',
+    fontSize: 11,
   },
-  lessonType: {
-    fontSize: 14,
-    color: "#4A5568",
-    paddingVertical: 2,
-    borderRadius: 50,
+  timetableLessonType: {
+    fontSize: 10,
+    marginVertical: 2,
+    colour: '#C0C0C0',
   },
-  timeSlot: {
-    fontSize: 15,
-    color: "#2D3748",
-    marginBottom: 4,
-    fontWeight: "500",
-  },
-  venue: {
-    fontSize: 14,
-    color: "#4A5568",
-    fontWeight: "500",
-  },
-  noClassesText: {
-    textAlign: "center",
-    color: "#95a5a6",
-    fontStyle: "italic",
-    marginVertical: 20,
+  timetableLessonVenue: {
+    fontSize: 9,
+    color: '#707070',
   },
   modalContainer: {
     flex: 1,
