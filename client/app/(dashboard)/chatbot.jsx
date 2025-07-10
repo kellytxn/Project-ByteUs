@@ -118,6 +118,7 @@ const Chatbot = () => {
   const [loading, setLoading] = useState(true);
   const [welcomeMessage, setWelcomeMessage] = useState(null);
   const [profilePic, setProfilePic] = useState(null);
+  const [mcsToGrad, setMcsToGrad] = useState(null);
   const flatListRef = useRef(null);
 
   useFocusEffect(
@@ -137,6 +138,16 @@ const Chatbot = () => {
 
           if (data.status === "ok") {
             setUserData(data.data);
+            const saved = await AsyncStorage.getItem(
+              `mcsToGraduate_${data.data.email}`
+            );
+
+            const savedNumber = Number(saved);
+            if (saved && !isNaN(savedNumber) && savedNumber > 0) {
+              setMcsToGrad(savedNumber);
+            } else {
+              setMcsToGrad(null);
+            }
             const welcomeMsg = {
               text: `Hello ${
                 data.data?.name || "there"
@@ -252,7 +263,10 @@ const Chatbot = () => {
         .filter((mod) => mod.completed)
         .reduce((sum, mod) => sum + mod.units, 0);
 
-      const unitsLeft = 160 - completedUnits;
+      const total =
+        mcsToGrad || userData.modules.reduce((sum, mod) => sum + mod.units, 0);
+
+      const unitsLeft = total - completedUnits;
 
       // Filter only completed, graded (not CS or CU), and not SU
       const completedModules = userData.modules.filter(
@@ -320,7 +334,10 @@ const Chatbot = () => {
         .filter((mod) => mod.completed)
         .reduce((sum, mod) => sum + mod.units, 0);
 
-      const unitsLeft = 160 - completedUnits;
+      const total =
+        mcsToGrad || userData.modules.reduce((sum, mod) => sum + mod.units, 0);
+
+      const unitsLeft = total - completedUnits;
 
       // Filter only completed, graded (not CS or CU), and not SU
       const completedModules = userData.modules.filter(

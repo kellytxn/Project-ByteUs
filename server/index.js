@@ -25,8 +25,8 @@ const User = mongoose.model("UserInfo");
 app.use(cors());
 app.use(helmet());
 app.use(cookieParser());
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
 app.get("/", (req, res) => {
   res.json({ message: "Hello from the server" });
@@ -428,7 +428,7 @@ app.post("/uploadProfilePic", async (req, res) => {
         .json({ status: "error", message: "User not found" });
     }
 
-    // Save the base64 image in the DB (or upload to S3 and store the URL)
+    // Save the base64 image in the DB
     user.profilePic = image;
     await user.save();
 
