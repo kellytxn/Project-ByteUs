@@ -19,25 +19,19 @@ const generatePopulation = (modCodes, modsData, populationSize = 100) => {
         classesByType[lesson.lessonType].push(lesson);
       });
 
-      //pick all classes of same class number per lesson type
+      //pick 1 class per lesson type
       for (const [lessonType, lessons] of Object.entries(classesByType)) {
-        let pickedClassNo = lessons[Math.floor(Math.random() * lessons.length)].classNo;
-        for (const lesson of lessons) {
-          if (lesson.classNo === pickedClassNo) {
-            let pickedClass = lesson;
+        let pickedClass = lessons[Math.floor(Math.random() * lessons.length)];
 
-            timetable.push({
-              modCode: modCode,
-              startTime: pickedClass.startTime,
-              endTime: pickedClass.endTime,
-              weeks: pickedClass.weeks,
-              day: pickedClass.day,
-              venue: pickedClass.venue,
-              lessonType: pickedClass.lessonType,
-              classNo: pickedClass.classNo,
-            });
-          }
-        }
+        timetable.push({
+          modCode: modCode,
+          startTime: pickedClass.startTime,
+          endTime: pickedClass.endTime,
+          weeks: pickedClass.weeks,
+          day: pickedClass.day,
+          venue: pickedClass.venue,
+          lessonType: pickedClass.lessonType,
+        });
       }
     }
     population.push(timetable);
@@ -133,36 +127,28 @@ const mutate = (timetable, modsData, mutationRate = 0.1) => {
       let allClasses = modsData[lesson.modCode];
       if (!allClasses) continue;
 
-      //remove all lessons of that mod & lesson type
-      let newTimetable = newTimetable.filter(clas => 
-        !(clas.modCode === lesson.modCode && 
-          clas.lessonType === lesson.lessonType));
-
-      //find all classes of that lesson type
-      let classes = [];
+      //group classes by lesson type (eg lect, tut, rec)
+      let classesByType = {};
+      classesByType[lesson.lessonType] = [];
       allClasses.forEach((clas) => {
         if (clas.lessonType === lesson.lessonType) {
-          classes.push(clas);
+          classesByType[lesson.lessonType].push(clas);
         }
       });
 
-      //pick all classes of same class number & that lesson type
-      let pickedClassNo = classes[Math.floor(Math.random() * classes.length)].classNo;
-      for (const clas of classes) {
-        if (clas.classNo === pickedClassNo) {
-          let pickedClass = clas;
+      //pick 1 class of the same lesson type
+      for (const [lessonType, lessons] of Object.entries(classesByType)) {
+        let pickedClass = lessons[Math.floor(Math.random() * lessons.length)];
 
-          newTimetable.push({
-            modCode: lesson.modCode,
-            startTime: pickedClass.startTime,
-            endTime: pickedClass.endTime,
-            weeks: pickedClass.weeks,
-            day: pickedClass.day,
-            venue: pickedClass.venue,
-            lessonType: pickedClass.lessonType,
-            classNo: pickedClass.classNo,
-          });
-        }
+        newTimetable[i] = {
+          modCode: lesson.modCode,
+          startTime: pickedClass.startTime,
+          endTime: pickedClass.endTime,
+          weeks: pickedClass.weeks,
+          day: pickedClass.day,
+          venue: pickedClass.venue,
+          lessonType: pickedClass.lessonType,
+        };
       }
     }
   }
@@ -170,92 +156,33 @@ const mutate = (timetable, modsData, mutationRate = 0.1) => {
 };
 
 //create new timetable with some of A's lessons & some of B's lessons
-const crossover = (timetableA, timetableB, modsData) => {
-  let finalTimetableA = [...timetableA];
-  let finalTimetableB = [...timetableB];
-    
-  //remove all lessons of same mod & lesson type with >1 class per week from finalTimetableA
-  let timetable1 = {};
+const crossover = (timetableA, timetableB) => {
+  const mapA = new Map();
+  const mapB = new Map();
+
+  //use modcode and lesson type to as key to get one of each lesson (if A and B have different orders)
   timetableA.forEach((lesson) => {
-    if (!timetable1[lesson.modCode]) {
-      timetable1[lesson.modCode] = {};
-    }
-    if (!timetable1[lesson.modCode][lesson.lessonType]) {
-      timetable1[lesson.modCode][lesson.lessonType] = [];
-    }
-    timetable1[lesson.modCode][lesson.lessonType].push(lesson);
-  })
+    const key = `${lesson.modCode}_${lesson.lessonType}`;
+    mapA.set(key, lesson);
+  });
 
-  for (const [modCode, lessonType] of Object.entries(timetable1)) {
-    for (const [type, lessons] of Object.entries(lessonType)) {
-      if (lessons.length > 1) {
-        finalTimetableA = finalTimetableA
-        .filter(c => !(c.modCode === modCode && c.lessonType === type));
-      }
-    }
-  }
-
-  //remove all lessons of same mod & lesson type with >1 class per week from finalTimetableB
-  let timetable2 = {};
   timetableB.forEach((lesson) => {
-    if (!timetable2[lesson.modCode]) {
-      timetable2[lesson.modCode] = {};
-    }
-    if (!timetable2[lesson.modCode][lesson.lessonType]) {
-      timetable2[lesson.modCode][lesson.lessonType] = [];
-    }
-    timetable2[lesson.modCode][lesson.lessonType].push(lesson);
-  })
+    const key = `${lesson.modCode}_${lesson.lessonType}`;
+    mapB.set(key, lesson);
+  });
 
-  for (const [modCode, lessonType] of Object.entries(timetable2)) {
-    for (const [type, lessons] of Object.entries(lessonType)) {
-      if (lessons.length > 1) {
-        finalTimetableB = finalTimetableB
-        .filter(!(c => c.modCode === modCode && c.lessonType === type));
-      } 
-    }
-  }
-  
-  let crossoverPoint = Math.floor(Math.random() * finalTimetableA.length);
+  //get all unique keys from both timetables
+  const allKeys = new Set([...mapA.keys(), ...mapB.keys()]);
+  const finalTimetable = [];
 
-  let finalTimetable = finalTimetableA.slice(0, crossoverPoint)
-  .concat(finalTimetableB.slice(crossoverPoint));
-
-  //add classes with repeat lessons each week back
-  for (const [modCode, lessonType] of Object.entries(timetable1)) {
-    for (const [type, lessons] of Object.entries(lessonType)) {
-      if (lessons.length > 1) {
-        let allClasses = modsData[modCode];
-        if (!allClasses) continue;
-
-        let classes = [];
-        allClasses.forEach((clas) => {
-          if (clas.lessonType === type) {
-            classes.push(clas);
-          }
-        });
-
-        let pickedClassNo = classes[Math.floor(Math.random() * classes.length)].classNo;
-        for (const clas of classes) {
-          if (clas.classNo === pickedClassNo) {
-            let pickedClass = clas;
-
-            finalTimetable.push({
-              modCode: modCode,
-              startTime: pickedClass.startTime,
-              endTime: pickedClass.endTime,
-              weeks: pickedClass.weeks,
-              day: pickedClass.day,
-              venue: pickedClass.venue,
-              lessonType: pickedClass.lessonType,
-              classNo: pickedClass.classNo,
-            });
-          }
-        }
-      }
+  //pick some lessons from A and some from B (equal probability)
+  for (const key of allKeys) {
+    if (mapA.has(key) && mapB.has(key)) {
+      finalTimetable.push(Math.random() < 0.5 ? mapA.get(key) : mapB.get(key));
+    } else {
+      finalTimetable.push(mapA.has(key) ? mapA.get(key) : mapB.get(key));
     }
   }
-
   return finalTimetable;
 };
 
@@ -321,7 +248,7 @@ const evolve = (
     if (Math.random() < crossoverRate) {
       let timetableA = nextGen[i];
       let timetableB = nextGen[Math.floor(Math.random() * populationSize)];
-      nextGen[i] = crossover(timetableA, timetableB, modsData);
+      nextGen[i] = crossover(timetableA, timetableB);
     }
     nextGen[i] = mutate(nextGen[i], modsData, mutationRate);
   }

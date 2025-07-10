@@ -393,12 +393,12 @@ app.post("/timetableSnapshot", async (req, res) => {
       return res.status(404).json({ status: "error", data: "User not found" });
     }
 
-    user.timetable = BinData(timetable.slice(1));
+    user.timetable = Buffer.from(timetable, "base64");
     await user.save();
 
-    res.status(200).json({ 
-      status: "success", 
-      data: "Timetable snapshot saved successfully" 
+    res.status(200).json({
+      status: "success",
+      data: "Timetable snapshot saved successfully",
     });
   } catch (error) {
     console.error("Timetable snapshot save error:", error);

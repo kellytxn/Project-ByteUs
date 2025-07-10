@@ -221,6 +221,14 @@ const Track = () => {
         Alert.alert("Please enter the semester you completed the module");
         return;
       }
+      if (isNaN(year)) {
+        Alert.alert("Year must be a number");
+        return;
+      }
+      if (isNaN(semester)) {
+        Alert.alert("Semester must be a number");
+        return;
+      }
 
       if (!validateGrade(grade)) {
         Alert.alert(
@@ -1317,11 +1325,12 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     paddingHorizontal: 8,
     marginBottom: 10,
-    width: "100%",
+    width: screenWidth * 0.89,
   },
   categoryHeaderContent: {
     flexDirection: "column",
     paddingHorizontal: 16,
+    width: "100%",
   },
   categoryInfo: {
     flexDirection: "row",
