@@ -82,18 +82,16 @@ const Home = () => {
       const res = await axios.post(`${BACKEND_URL}/userData`, {
         token,
       });
-      setUserData(res.data.data);
+      const freshUserData = res.data.data;
+      setUserData(freshUserData);
+      if (freshUserData.profilePic) {
+        setProfilePic(freshUserData.profilePic);
+      }
 
-      // Check for existing profile picture in local storage
-      const savedImage = await AsyncStorage.getItem(
-        `profilePic_${res.data.data.email}`
-      );
-      if (savedImage) setProfilePic(savedImage);
+      // Check for existing MCs in local storage
       const savedMCs = await AsyncStorage.getItem(
         `mcsToGraduate_${res.data.data.email}`
       );
-
-      // Check for existing MCs in local storage
       if (savedMCs) {
         setFormData((prev) => ({
           ...prev,
@@ -113,27 +111,30 @@ const Home = () => {
   }
 
   const pickImage = async () => {
-    // Request permissions
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      alert("Sorry, we need camera roll permissions!");
-      return;
-    }
-
-    // Launch image picker
-    let result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.8,
+      quality: 0.5,
+      base64: true,
     });
 
     if (!result.canceled) {
-      setProfilePic(result.assets[0].uri);
-      await AsyncStorage.setItem(
-        `profilePic_${userData.email}`,
-        result.assets[0].uri
-      );
+      const uri = result.assets[0].uri;
+      setProfilePic(uri);
+
+      // Upload to backend as base64
+      const token = await AsyncStorage.getItem("token");
+      const base64 = result.assets[0].base64;
+
+      try {
+        await axios.post(`${BACKEND_URL}/uploadProfilePic`, {
+          token,
+          image: base64,
+        });
+      } catch (err) {
+        console.error("Upload failed", err);
+      }
     }
   };
 

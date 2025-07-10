@@ -412,6 +412,35 @@ app.post("/timetableSnapshot", async (req, res) => {
   }
 });
 
+app.post("/uploadProfilePic", async (req, res) => {
+  const { token, image } = req.body;
+  if (!token || !image) {
+    return res.status(400).json({ status: "error", message: "Missing data" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findOne({ email: decoded.email });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ status: "error", message: "User not found" });
+    }
+
+    // Save the base64 image in the DB (or upload to S3 and store the URL)
+    user.profilePic = image;
+    await user.save();
+
+    res
+      .status(200)
+      .json({ status: "success", message: "Profile picture updated" });
+  } catch (err) {
+    console.error("Upload profile pic error:", err);
+    res.status(500).json({ status: "error", message: "Server error" });
+  }
+});
+
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server listening on port ${PORT}`);

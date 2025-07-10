@@ -23,6 +23,7 @@ const UserDetailsSchema = new mongoose.Schema({
   email: { type: String, unique: true, required: true },
   password: { type: String, required: true, select: false },
   timetable: { type: Buffer, required: false },
+  profilePic: { type: String, required: false },
   modules: {
     type: [ModuleSchema],
     default: [],

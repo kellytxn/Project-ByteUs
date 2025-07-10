@@ -160,10 +160,10 @@ const Chatbot = () => {
   );
 
   useEffect(() => {
-    if (userData?.email) {
-      AsyncStorage.getItem(`profilePic_${userData.email}`).then((uri) => {
-        if (uri) setProfilePic(uri);
-      });
+    if (userData?.profilePic) {
+      setProfilePic(`data:image/jpeg;base64,${userData.profilePic}`);
+    } else {
+      setProfilePic(null);
     }
   }, [userData]);
 
