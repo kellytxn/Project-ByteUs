@@ -172,7 +172,7 @@ const Chatbot = () => {
 
   useEffect(() => {
     if (userData?.profilePic) {
-      setProfilePic(`data:image/jpeg;base64,${userData.profilePic}`);
+      setProfilePic(userData.profilePic);
     } else {
       setProfilePic(null);
     }
@@ -426,7 +426,11 @@ const Chatbot = () => {
       >
         {isUser && (
           <Image
-            source={profilePic ? { uri: profilePic } : USER_AVATAR}
+            source={
+              profilePic
+                ? { uri: `data:image/jpeg;base64,${profilePic}` }
+                : USER_AVATAR
+            }
             style={styles.avatar}
           />
         )}

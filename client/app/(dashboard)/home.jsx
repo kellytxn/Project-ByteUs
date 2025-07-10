@@ -120,12 +120,9 @@ const Home = () => {
     });
 
     if (!result.canceled) {
-      const uri = result.assets[0].uri;
-      setProfilePic(uri);
-
-      // Upload to backend as base64
       const token = await AsyncStorage.getItem("token");
       const base64 = result.assets[0].base64;
+      setProfilePic(base64);
 
       try {
         await axios.post(`${BACKEND_URL}/uploadProfilePic`, {
@@ -239,7 +236,7 @@ const Home = () => {
             <Pressable onPress={pickImage} style={styles.profileImageContainer}>
               {profilePic ? (
                 <Image
-                  source={{ uri: profilePic }}
+                  source={{ uri: `data:image/jpeg;base64,${profilePic}` }}
                   style={styles.profileImage}
                 />
               ) : (
