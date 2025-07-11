@@ -121,54 +121,59 @@ const Chatbot = () => {
   const [mcsToGrad, setMcsToGrad] = useState(null);
   const flatListRef = useRef(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      const fetchUserData = async () => {
-        try {
-          const token = await AsyncStorage.getItem("token");
-          if (!token) throw new Error("No token found");
+  useEffect(() => {
+    let isMounted = true;
+    const fetchUserData = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) throw new Error("No token found");
 
-          const response = await fetch(`${BACKEND_URL}/userData`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token }),
-          });
+        const response = await fetch(`${BACKEND_URL}/userData`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
 
-          const data = await response.json();
+        const data = await response.json();
 
-          if (data.status === "ok") {
-            setUserData(data.data);
-            const saved = await AsyncStorage.getItem(
-              `mcsToGraduate_${data.data.email}`
-            );
+        if (data.status === "ok" && isMounted) {
+          setUserData(data.data);
+          const saved = await AsyncStorage.getItem(
+            `mcsToGraduate_${data.data.email}`
+          );
 
-            const savedNumber = Number(saved);
-            if (saved && !isNaN(savedNumber) && savedNumber > 0) {
-              setMcsToGrad(savedNumber);
-            } else {
-              setMcsToGrad(null);
-            }
-            const welcomeMsg = {
-              text: `Hello ${
-                data.data?.name || "there"
-              }! I'm your academic assistant — here to support you on your learning journey.\n\nHere are some common questions you might have — feel free to tap on any of them to get started!`,
-              sender: "gemini",
-            };
-
-            setWelcomeMessage(welcomeMsg);
+          const savedNumber = Number(saved);
+          if (saved && !isNaN(savedNumber) && savedNumber > 0) {
+            setMcsToGrad(savedNumber);
           } else {
-            throw new Error(data.data || "Failed to fetch user data");
+            setMcsToGrad(null);
           }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
+          const welcomeMsg = {
+            text: `Hello ${
+              data.data?.name || "there"
+            }! I'm your academic assistant — here to support you on your learning journey.\n\nHere are some common questions you might have — feel free to tap on any of them to get started!`,
+            sender: "gemini",
+          };
 
+          setWelcomeMessage(welcomeMsg);
+        } else if (isMounted) {
+          throw new Error(data.data || "Failed to fetch user data");
+        }
+      } catch (error) {
+        if (isMounted) console.error("Error fetching user data:", error);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchUserData();
+    const intervalId = setInterval(() => {
       fetchUserData();
-    }, [])
-  );
+    }, 2000);
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, []);
 
   useEffect(() => {
     if (userData?.profilePic) {

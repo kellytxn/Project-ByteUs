@@ -9,6 +9,8 @@ import {
   ScrollView,
   TextInput,
   Alert,
+  FlatList,
+  Modal,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
@@ -32,8 +34,203 @@ const Home = () => {
     mcsToGraduate: "",
   });
   const [totalModuleUnits, setTotalModuleUnits] = useState(0);
+  const [friends, setFriends] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [showFriends, setShowFriends] = useState(false);
+  const [showRequests, setShowRequests] = useState(false);
+  const [currentTab, setCurrentTab] = useState("profile");
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedFriend, setSelectedFriend] = useState(null);
+  const [selfModalVisible, setSelfModalVisible] = useState(false);
 
   const router = useRouter();
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      getData();
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch exisiting friends
+  const fetchFriends = async (friendIds) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const response = await axios.post(
+        `${BACKEND_URL}/getFriendsDetails`,
+        { friendIds },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      setFriends(response.data.friends);
+    } catch (error) {
+      console.error("Error fetching friends:", error);
+      setFriends([]);
+    }
+  };
+
+  // Fetch pending requests
+  const fetchPendingRequests = async () => {
+    try {
+      if (!userData?._id) return;
+
+      const token = await AsyncStorage.getItem("token");
+      const response = await axios.get(
+        `${BACKEND_URL}/pendingFriendRequests/${userData._id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      setPendingRequests(response.data.requests);
+    } catch (error) {
+      console.error("Error fetching pending requests:", error);
+      setPendingRequests([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingRequests();
+  }, [userData]);
+
+  // Accept or delete request
+  const handleFriendRequest = async (requestId, action) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      await axios.post(`${BACKEND_URL}/${action}FriendRequest`, {
+        requestId,
+        token,
+      });
+      fetchPendingRequests();
+      if (action === "accept") {
+        // Refresh friends list after accepting
+        const updatedUser = await axios.post(`${BACKEND_URL}/userData`, {
+          token,
+        });
+        setUserData(updatedUser.data.data);
+        fetchFriends(updatedUser.data.data.friends);
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing friend request:`, error);
+      Alert.alert("Error", `Failed to ${action} friend request`);
+    }
+  };
+
+  //Sending friend request
+  const sendFriendRequest = async (email) => {
+    try {
+      if (!userData?.email) {
+        Alert.alert("Error", "Your user information is not available");
+        return;
+      }
+
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert(
+          "Error",
+          "You need to be logged in to send friend requests"
+        );
+        return;
+      }
+
+      // Basic email validation
+      if (!email || !email.includes("@")) {
+        Alert.alert("Error", "Please enter a valid email address");
+        return;
+      }
+
+      // Don't allow sending to yourself
+      if (email.toLowerCase() === userData.email.toLowerCase()) {
+        Alert.alert("Error", "You cannot send a friend request to yourself");
+        return;
+      }
+
+      const response = await axios.post(
+        `${BACKEND_URL}/sendFriendRequest`,
+        {
+          fromEmail: userData.email,
+          toEmail: email,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      Alert.alert("Success", response.data.message);
+
+      fetchPendingRequests();
+    } catch (error) {
+      console.log("Error sending friend request:", error);
+      let errorMessage = "Failed to send friend request";
+
+      if (error.response) {
+        if (error.response.status === 400) {
+          errorMessage = error.response.data.message || errorMessage;
+        } else if (error.response.status === 401) {
+          errorMessage = "Session expired. Please login again";
+        } else if (error.response.status === 404) {
+          errorMessage = "User not found. Please check the email address";
+        }
+      }
+
+      Alert.alert("Error", errorMessage);
+    }
+  };
+
+  // Delete friend
+  const handleDeleteFriend = async (friendId) => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token || !userData?._id) return;
+
+      Alert.alert(
+        "Remove Friend",
+        "Are you sure you want to remove this friend?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel",
+          },
+          {
+            text: "Remove",
+            onPress: async () => {
+              const response = await axios.post(
+                `${BACKEND_URL}/deleteFriend`,
+                {
+                  userId: userData._id,
+                  friendId,
+                },
+                {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+
+              // Refresh friends list
+              const updatedUser = await axios.post(`${BACKEND_URL}/userData`, {
+                token,
+              });
+              setUserData(updatedUser.data.data);
+              fetchFriends(updatedUser.data.data.friends);
+
+              Alert.alert("Success", response.data.message);
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Error deleting friend:", error);
+      Alert.alert("Error", "Failed to remove friend");
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -46,8 +243,12 @@ const Home = () => {
           const freshUserData = res.data.data;
 
           setUserData(freshUserData);
+          if (freshUserData.friends?.length > 0) {
+            fetchFriends(freshUserData.friends);
+          }
+          fetchPendingRequests();
 
-          // Calculate total units after fetching new user data
+          // Calculate total units
           if (freshUserData?.modules) {
             const total = freshUserData.modules.reduce(
               (sum, module) => sum + Number(module.units || 0),
@@ -123,12 +324,14 @@ const Home = () => {
       const token = await AsyncStorage.getItem("token");
       const base64 = result.assets[0].base64;
       setProfilePic(base64);
-
       try {
         await axios.post(`${BACKEND_URL}/uploadProfilePic`, {
           token,
           image: base64,
         });
+        setTimeout(() => {
+          getData();
+        }, 10000);
       } catch (err) {
         console.error("Upload failed", err);
       }
@@ -224,10 +427,7 @@ const Home = () => {
           </Pressable>
         </View>
       ) : userData ? (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+        <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.welcomeText}>Welcome back,</Text>
             <Text style={styles.name}>{userData.name}</Text>
@@ -249,134 +449,415 @@ const Home = () => {
               </View>
             </Pressable>
           </View>
+          <View style={styles.selfTimetable}>
+            <Pressable
+              onPress={() => setSelfModalVisible(true)}
+              style={styles.button}
+            >
+              <Text style={[styles.buttonText]}>View My Timetable</Text>
+            </Pressable>
 
-          <View style={styles.infoCard}>
-            <View style={styles.cardHeader}>
-              <Pressable onPress={() => setIsEditing(!isEditing)}>
-                <Ionicons
-                  name={isEditing ? "close" : "create"}
-                  size={22}
-                  color="#AE96C7"
-                />
-              </Pressable>
-            </View>
-
-            {isEditing && (
-              <>
-                <View style={styles.infoRow}>
-                  <Ionicons name="person" size={22} color="#AE96C7" />
-                  <Text style={styles.infoLabel}>Name:</Text>
-                  <TextInput
-                    value={formData.name}
-                    onChangeText={(text) =>
-                      setFormData({ ...formData, name: text })
-                    }
-                    style={styles.input}
-                  />
+            <Modal
+              visible={selfModalVisible}
+              transparent={true}
+              animationType="slide"
+            >
+              <View style={styles.modalContainer}>
+                <View style={styles.modalContent}>
+                  {userData.timetable ? (
+                    <Image
+                      source={{
+                        uri: `data:image/png;base64,${userData.timetable}`,
+                      }}
+                      style={styles.timetableImage}
+                    />
+                  ) : (
+                    <Text style={styles.noTimetableText}>
+                      No timetable saved
+                    </Text>
+                  )}
+                  <Pressable
+                    style={styles.closeButton}
+                    onPress={() => setSelfModalVisible(false)}
+                  >
+                    <Text style={styles.closeButtonText}>Close</Text>
+                  </Pressable>
                 </View>
-                <View style={styles.divider} />
-              </>
-            )}
-
-            <View style={styles.infoRow}>
-              <Ionicons name="book" size={22} color="#AE96C7" />
-              <Text style={styles.infoLabel}>Course:</Text>
-              {isEditing ? (
-                <TextInput
-                  value={formData.course}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, course: text })
-                  }
-                  style={styles.input}
-                />
-              ) : (
-                <Text style={styles.infoValue}>{userData.course}</Text>
-              )}
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.infoRow}>
-              <Ionicons name="time" size={22} color="#AE96C7" />
-              <Text style={styles.infoLabel}>Year:</Text>
-              {isEditing ? (
-                <TextInput
-                  value={formData.year}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, year: text })
-                  }
-                  style={styles.input}
-                  keyboardType="numeric"
-                />
-              ) : (
-                <Text style={styles.infoValue}>{userData.year}</Text>
-              )}
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.infoRow}>
-              <Ionicons name="calendar" size={22} color="#AE96C7" />
-              <Text style={styles.infoLabel}>Semester:</Text>
-              {isEditing ? (
-                <TextInput
-                  value={formData.semester}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, semester: text })
-                  }
-                  style={styles.input}
-                  keyboardType="numeric"
-                />
-              ) : (
-                <Text style={styles.infoValue}>{userData.semester}</Text>
-              )}
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.infoRow}>
-              <Ionicons name="school" size={22} color="#AE96C7" />
-              <Text style={styles.infoLabel}>MCs Required:</Text>
-              {isEditing ? (
-                <TextInput
-                  value={formData.mcsToGraduate}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, mcsToGraduate: text })
-                  }
-                  style={styles.input}
-                  keyboardType="numeric"
-                />
-              ) : (
-                <Text style={styles.infoValue}>
-                  {isEditing
-                    ? formData.mcsToGraduate
-                    : isNaN(Number(formData.mcsToGraduate)) ||
-                      formData.mcsToGraduate === ""
-                    ? "N/A"
-                    : formData.mcsToGraduate}
-                </Text>
-              )}
-            </View>
-
-            {isEditing && (
-              <Pressable
-                onPress={handleSave}
-                style={styles.saveButton}
-                android_ripple={{ color: "#9C7FC5" }}
-              >
-                <Text style={styles.saveButtonText}>Save Changes</Text>
-              </Pressable>
-            )}
+              </View>
+            </Modal>
           </View>
 
-          <Pressable
-            onPress={handleLogout}
-            style={styles.logoutButton}
-            android_ripple={{ color: "#9C7FC5" }}
+          <View style={styles.mainContainer}>
+            <View style={styles.tabContainer}>
+              <Pressable
+                style={[
+                  styles.tabButton,
+                  currentTab === "profile" && styles.activeTab,
+                ]}
+                onPress={() => setCurrentTab("profile")}
+              >
+                <Text style={styles.tabText}>Profile</Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.tabButton,
+                  currentTab === "friends" && styles.activeTab,
+                ]}
+                onPress={() => setCurrentTab("friends")}
+              >
+                <Text style={styles.tabText}>Friends</Text>
+              </Pressable>
+            </View>
+            <View style={styles.dashboardContainer}>
+              {currentTab === "profile" ? (
+                <ScrollView contentContainerStyle={styles.scrollContent}>
+                  <View style={styles.infoCard}>
+                    <View style={styles.cardHeader}>
+                      <Pressable onPress={() => setIsEditing(!isEditing)}>
+                        <Ionicons
+                          name={isEditing ? "close" : "create"}
+                          size={22}
+                          color="#AE96C7"
+                        />
+                      </Pressable>
+                    </View>
+
+                    {isEditing && (
+                      <>
+                        <View style={styles.infoRow}>
+                          <Ionicons name="person" size={22} color="#AE96C7" />
+                          <Text style={styles.infoLabel}>Name:</Text>
+                          <TextInput
+                            value={formData.name}
+                            onChangeText={(text) =>
+                              setFormData({ ...formData, name: text })
+                            }
+                            style={styles.input}
+                          />
+                        </View>
+                        <View style={styles.divider} />
+                      </>
+                    )}
+
+                    <View style={styles.infoRow}>
+                      <Ionicons name="book" size={22} color="#AE96C7" />
+                      <Text style={styles.infoLabel}>Course:</Text>
+                      {isEditing ? (
+                        <TextInput
+                          value={formData.course}
+                          onChangeText={(text) =>
+                            setFormData({ ...formData, course: text })
+                          }
+                          style={styles.input}
+                        />
+                      ) : (
+                        <Text style={styles.infoValue}>{userData.course}</Text>
+                      )}
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    <View style={styles.infoRow}>
+                      <Ionicons name="time" size={22} color="#AE96C7" />
+                      <Text style={styles.infoLabel}>Year:</Text>
+                      {isEditing ? (
+                        <TextInput
+                          value={formData.year}
+                          onChangeText={(text) =>
+                            setFormData({ ...formData, year: text })
+                          }
+                          style={styles.input}
+                          keyboardType="numeric"
+                        />
+                      ) : (
+                        <Text style={styles.infoValue}>{userData.year}</Text>
+                      )}
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    <View style={styles.infoRow}>
+                      <Ionicons name="calendar" size={22} color="#AE96C7" />
+                      <Text style={styles.infoLabel}>Semester:</Text>
+                      {isEditing ? (
+                        <TextInput
+                          value={formData.semester}
+                          onChangeText={(text) =>
+                            setFormData({ ...formData, semester: text })
+                          }
+                          style={styles.input}
+                          keyboardType="numeric"
+                        />
+                      ) : (
+                        <Text style={styles.infoValue}>
+                          {userData.semester}
+                        </Text>
+                      )}
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    <View style={styles.infoRow}>
+                      <Ionicons name="school" size={22} color="#AE96C7" />
+                      <Text style={styles.infoLabel}>MCs Required:</Text>
+                      {isEditing ? (
+                        <TextInput
+                          value={formData.mcsToGraduate}
+                          onChangeText={(text) =>
+                            setFormData({ ...formData, mcsToGraduate: text })
+                          }
+                          style={styles.input}
+                          keyboardType="numeric"
+                        />
+                      ) : (
+                        <Text style={styles.infoValue}>
+                          {isEditing
+                            ? formData.mcsToGraduate
+                            : isNaN(Number(formData.mcsToGraduate)) ||
+                              formData.mcsToGraduate === ""
+                            ? "N/A"
+                            : formData.mcsToGraduate}
+                        </Text>
+                      )}
+                    </View>
+
+                    {isEditing && (
+                      <Pressable
+                        onPress={handleSave}
+                        style={styles.saveButton}
+                        android_ripple={{ color: "#9C7FC5" }}
+                      >
+                        <Text style={styles.saveButtonText}>Save Changes</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                  <Pressable
+                    onPress={handleLogout}
+                    style={styles.logoutButton}
+                    android_ripple={{ color: "#9C7FC5" }}
+                  >
+                    <Text style={styles.logoutText}>Logout</Text>
+                  </Pressable>
+                </ScrollView>
+              ) : (
+                <ScrollView contentContainerStyle={styles.scrollContent}>
+                  <View style={styles.infoCard}>
+                    <Pressable
+                      onPress={() => setShowFriends(!showFriends)}
+                      style={styles.sectionHeader}
+                    >
+                      <View style={styles.sectionHeaderContent}>
+                        <Ionicons name="people" size={22} color="#AE96C7" />
+                        <Text style={styles.sectionTitle}>Friends</Text>
+                      </View>
+                      <Ionicons
+                        name={showFriends ? "chevron-up" : "chevron-down"}
+                        size={22}
+                        color="#AE96C7"
+                      />
+                    </Pressable>
+                    {showFriends && (
+                      <View style={styles.friendsListContainer}>
+                        {friends.length > 0 ? (
+                          friends.map((friend) => (
+                            <Pressable
+                              key={friend._id}
+                              style={styles.friendListItem}
+                              onPress={() => {
+                                setSelectedFriend(friend);
+                                setModalVisible(true);
+                              }}
+                            >
+                              <View style={styles.friendInfo}>
+                                {friend.profilePic ? (
+                                  <Image
+                                    source={{
+                                      uri: `data:image/jpeg;base64,${friend.profilePic}`,
+                                    }}
+                                    style={styles.friendListItemImage}
+                                  />
+                                ) : (
+                                  <View
+                                    style={styles.friendListItemPlaceholder}
+                                  >
+                                    <Ionicons
+                                      name="person"
+                                      size={24}
+                                      color="#AE96C7"
+                                    />
+                                  </View>
+                                )}
+                                <Text style={styles.friendListItemName}>
+                                  {friend.name}
+                                </Text>
+                              </View>
+                              <Pressable
+                                onPress={() => handleDeleteFriend(friend._id)}
+                                style={styles.deleteButton}
+                              >
+                                <Ionicons
+                                  name="trash"
+                                  size={20}
+                                  color="#F44336"
+                                />
+                              </Pressable>
+                            </Pressable>
+                          ))
+                        ) : (
+                          <Text style={styles.noItemsText}>No friends yet</Text>
+                        )}
+                      </View>
+                    )}
+
+                    {/* Divider */}
+                    <View style={styles.divider} />
+                    <Pressable
+                      onPress={() => setShowRequests(!showRequests)}
+                      style={styles.sectionHeader}
+                    >
+                      <View style={styles.sectionHeaderContent}>
+                        <Ionicons name="time" size={22} color="#AE96C7" />
+                        <Text style={styles.sectionTitle}>
+                          Pending Requests
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name={showRequests ? "chevron-up" : "chevron-down"}
+                        size={22}
+                        color="#AE96C7"
+                      />
+                    </Pressable>
+                    {showRequests && (
+                      <View style={styles.requestsListContainer}>
+                        {pendingRequests.length > 0 ? (
+                          pendingRequests.map((request) => (
+                            <View
+                              key={request._id}
+                              style={styles.requestListItem}
+                            >
+                              <View style={styles.friendInfo}>
+                                {request.from.profilePic ? (
+                                  <Image
+                                    source={{
+                                      uri: `data:image/jpeg;base64,${request.from.profilePic}`,
+                                    }}
+                                    style={styles.friendListItemImage}
+                                  />
+                                ) : (
+                                  <View
+                                    style={styles.friendListItemPlaceholder}
+                                  >
+                                    <Ionicons
+                                      name="person"
+                                      size={24}
+                                      color="#AE96C7"
+                                    />
+                                  </View>
+                                )}
+                                <Text style={styles.friendListItemName}>
+                                  {request.from.name}
+                                </Text>
+                              </View>
+                              <View style={styles.requestActions}>
+                                <Pressable
+                                  style={styles.acceptButton}
+                                  onPress={() =>
+                                    handleFriendRequest(request._id, "accept")
+                                  }
+                                >
+                                  <Ionicons
+                                    name="checkmark"
+                                    size={20}
+                                    color="white"
+                                  />
+                                </Pressable>
+                                <Pressable
+                                  style={styles.rejectButton}
+                                  onPress={() =>
+                                    handleFriendRequest(request._id, "reject")
+                                  }
+                                >
+                                  <Ionicons
+                                    name="close"
+                                    size={20}
+                                    color="white"
+                                  />
+                                </Pressable>
+                              </View>
+                            </View>
+                          ))
+                        ) : (
+                          <Text style={styles.noItemsText}>
+                            No pending requests
+                          </Text>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                  <Pressable
+                    style={styles.addFriendButton}
+                    onPress={() => {
+                      Alert.prompt(
+                        "Add Friend",
+                        "Enter your friend's email address",
+                        [
+                          {
+                            text: "Cancel",
+                            style: "cancel",
+                          },
+                          {
+                            text: "Send",
+                            onPress: (email) => sendFriendRequest(email),
+                          },
+                        ],
+                        "plain-text"
+                      );
+                    }}
+                  >
+                    <Ionicons name="person-add" size={20} color="white" />
+                    <Text style={styles.addFriendText}>Add Friend</Text>
+                  </Pressable>
+                </ScrollView>
+              )}
+            </View>
+          </View>
+          <Modal
+            animationType="fade"
+            transparent={true}
+            visible={modalVisible}
+            onRequestClose={() => setModalVisible(false)}
           >
-            <Text style={styles.logoutText}>Logout</Text>
-          </Pressable>
-        </ScrollView>
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                {selectedFriend && (
+                  <>
+                    <Text style={styles.modalTitle}>
+                      {selectedFriend.name}'s Timetable
+                    </Text>
+                    {selectedFriend.timetable ? (
+                      <Image
+                        source={{
+                          uri: `data:image/png;base64,${selectedFriend.timetable}`,
+                        }}
+                        style={styles.timetableImage}
+                      />
+                    ) : (
+                      <Text style={styles.noTimetableText}>
+                        No timetable saved
+                      </Text>
+                    )}
+                  </>
+                )}
+                <Pressable
+                  style={styles.closeButton}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Modal>
+        </View>
       ) : null}
     </View>
   );
@@ -393,7 +874,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 25,
-    paddingTop: 35,
+    paddingTop: 5,
     alignItems: "center",
   },
   loadingContainer: {
@@ -485,7 +966,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     width: "100%",
     padding: 20,
-    marginBottom: 30,
+    marginBottom: 15,
     marginTop: 15,
     shadowColor: "#AE96C7",
     shadowOffset: { width: 0, height: 4 },
@@ -518,18 +999,11 @@ const styles = StyleSheet.create({
   },
   logoutButton: {
     backgroundColor: "#AE96C7",
-    paddingVertical: 16,
-    paddingHorizontal: 50,
-    borderRadius: 15,
+    padding: 15,
+    borderRadius: 8,
     alignItems: "center",
+    margin: 0,
     width: "100%",
-    maxWidth: 300,
-    shadowColor: "#AE96C7",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
-    marginTop: 15,
   },
   logoutText: {
     color: "white",
@@ -570,5 +1044,206 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    width: "100%",
+    borderRadius: 15,
+    marginBottom: 10,
+    shadowColor: "#AE96C7",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#333",
+    marginLeft: 10,
+  },
+  requestActions: {
+    flexDirection: "row",
+  },
+  acceptButton: {
+    backgroundColor: "#4CAF50",
+    padding: 8,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  rejectButton: {
+    backgroundColor: "#F44336",
+    padding: 8,
+    borderRadius: 20,
+  },
+  noItemsText: {
+    textAlign: "center",
+    color: "#888",
+    marginVertical: 20,
+  },
+  addFriendButton: {
+    flexDirection: "row",
+    backgroundColor: "#AE96C7",
+    padding: 15,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    marginBottom: 20,
+  },
+  addFriendText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+    marginLeft: 10,
+  },
+  mainContainer: {
+    flex: 1,
+    width: "100%",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+  tabButton: {
+    padding: 5,
+  },
+  activeTab: {
+    borderBottomWidth: 2,
+    borderBottomColor: "#AE96C7",
+  },
+  tabText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  activeTabText: {
+    color: "#AE96C7",
+    fontWeight: "bold",
+  },
+  dashboardContainer: {
+    flex: 1,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 10,
+    width: "90%",
+    maxHeight: "80%",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  noTimetableText: {
+    fontSize: 14,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  timetableImage: {
+    width: 300,
+    height: 400,
+    resizeMode: "contain",
+    borderRadius: 8,
+  },
+  closeButton: {
+    backgroundColor: "#AE96C7",
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 10,
+  },
+  closeButtonText: {
+    color: "white",
+    textAlign: "center",
+    fontWeight: "bold",
+  },
+
+  sectionHeaderContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  friendsListContainer: {
+    marginTop: 5,
+    marginBottom: 10,
+  },
+  friendListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EBE9E3",
+  },
+  friendInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  friendListItemImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  friendListItemPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F5F2F8",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  friendListItemName: {
+    fontSize: 16,
+    color: "#555",
+    fontWeight: "500",
+  },
+  requestsListContainer: {
+    marginTop: 5,
+    marginBottom: 10,
+  },
+  requestListItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EBE9E3",
+  },
+  selfTimetable: {
+    alignItems: "center",
+    widtg: "90%",
+    marginBottom: 15,
+    marginTop: -10,
+  },
+  button: {
+    backgroundColor: "#DFB6CF",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "black",
+    fontWeight: "600",
+  },
+  deleteButton: {
+    padding: 8,
+    marginLeft: 10,
   },
 });

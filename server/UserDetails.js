@@ -15,6 +15,27 @@ const ModuleSchema = new mongoose.Schema(
   { _id: true }
 );
 
+const FriendRequestSchema = new mongoose.Schema(
+  {
+    from: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "UserInfo",
+      required: true,
+    },
+    to: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "UserInfo",
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "accepted", "rejected"],
+      default: "pending",
+    },
+  },
+  { timestamps: true }
+);
+
 const UserDetailsSchema = new mongoose.Schema({
   name: { type: String, required: true },
   course: { type: String, required: true },
@@ -29,6 +50,13 @@ const UserDetailsSchema = new mongoose.Schema({
     default: [],
     required: false,
   },
+  friends: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: "UserInfo",
+    default: [],
+    required: false,
+  },
 });
 
 mongoose.model("UserInfo", UserDetailsSchema);
+mongoose.model("FriendRequest", FriendRequestSchema);
