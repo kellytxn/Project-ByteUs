@@ -166,17 +166,21 @@ const Home = () => {
 
       fetchPendingRequests();
     } catch (error) {
-      console.log("Error sending friend request:", error);
       let errorMessage = "Failed to send friend request";
 
-      if (error.response) {
-        if (error.response.status === 400) {
-          errorMessage = error.response.data.message || errorMessage;
-        } else if (error.response.status === 401) {
-          errorMessage = "Session expired. Please login again";
-        } else if (error.response.status === 404) {
-          errorMessage = "User not found. Please check the email address";
+      try {
+        if (error.response) {
+          if (error.response.status === 400) {
+            errorMessage = error.response.data.message || errorMessage;
+          } else if (error.response.status === 401) {
+            errorMessage = "Session expired. Please login again";
+          } else if (error.response.status === 404) {
+            errorMessage = "User not found. Please check the email address";
+          }
         }
+      } catch (nestedErr) {
+        if (__DEV__)
+          console.log("Nested error while handling error:", nestedErr);
       }
 
       Alert.alert("Error", errorMessage);
@@ -428,6 +432,38 @@ const Home = () => {
         </View>
       ) : userData ? (
         <View style={styles.container}>
+          <View style={styles.timetableIconWrapper}>
+            <Pressable onPress={() => setSelfModalVisible(true)}>
+              <Ionicons name="calendar" size={28} color="#AE96C7" />
+            </Pressable>
+          </View>
+          <Modal
+            visible={selfModalVisible}
+            transparent={true}
+            animationType="slide"
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalContent}>
+                {userData.timetable ? (
+                  <Image
+                    source={{
+                      uri: `data:image/png;base64,${userData.timetable}`,
+                    }}
+                    style={styles.timetableImage}
+                  />
+                ) : (
+                  <Text style={styles.noTimetableText}>No timetable saved</Text>
+                )}
+                <Pressable
+                  style={styles.closeButton}
+                  onPress={() => setSelfModalVisible(false)}
+                >
+                  <Text style={styles.closeButtonText}>Close</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Modal>
+
           <View style={styles.header}>
             <Text style={styles.welcomeText}>Welcome back,</Text>
             <Text style={styles.name}>{userData.name}</Text>
@@ -449,44 +485,6 @@ const Home = () => {
               </View>
             </Pressable>
           </View>
-          <View style={styles.selfTimetable}>
-            <Pressable
-              onPress={() => setSelfModalVisible(true)}
-              style={styles.button}
-            >
-              <Text style={[styles.buttonText]}>View My Timetable</Text>
-            </Pressable>
-
-            <Modal
-              visible={selfModalVisible}
-              transparent={true}
-              animationType="slide"
-            >
-              <View style={styles.modalContainer}>
-                <View style={styles.modalContent}>
-                  {userData.timetable ? (
-                    <Image
-                      source={{
-                        uri: `data:image/png;base64,${userData.timetable}`,
-                      }}
-                      style={styles.timetableImage}
-                    />
-                  ) : (
-                    <Text style={styles.noTimetableText}>
-                      No timetable saved
-                    </Text>
-                  )}
-                  <Pressable
-                    style={styles.closeButton}
-                    onPress={() => setSelfModalVisible(false)}
-                  >
-                    <Text style={styles.closeButtonText}>Close</Text>
-                  </Pressable>
-                </View>
-              </View>
-            </Modal>
-          </View>
-
           <View style={styles.mainContainer}>
             <View style={styles.tabContainer}>
               <Pressable
@@ -1168,12 +1166,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "bold",
   },
-
   sectionHeaderContent: {
     flexDirection: "row",
     alignItems: "center",
   },
-
   friendsListContainer: {
     marginTop: 5,
     marginBottom: 10,
@@ -1225,25 +1221,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#EBE9E3",
   },
-  selfTimetable: {
-    alignItems: "center",
-    widtg: "90%",
-    marginBottom: 15,
-    marginTop: -10,
-  },
-  button: {
-    backgroundColor: "#DFB6CF",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: "black",
-    fontWeight: "600",
-  },
   deleteButton: {
     padding: 8,
     marginLeft: 10,
+  },
+  timetableIconWrapper: {
+    position: "absolute",
+    top: 35,
+    right: 10,
+    zIndex: 10,
+    backgroundColor: "white",
+    padding: 5,
+    borderRadius: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });

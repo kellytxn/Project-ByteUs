@@ -679,7 +679,6 @@ app.post("/deleteFriend", async (req, res) => {
         .json({ message: "Both user ID and friend ID are required" });
     }
 
-    // Verify token and check authorization
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const requestingUser = await User.findOne({ email: decoded.email });
 
@@ -708,7 +707,7 @@ app.post("/deleteFriend", async (req, res) => {
 
     await Promise.all([user.save(), friend.save()]);
 
-    // Delete any pending friend requests between these users
+    // Delete any pending friend requests between them
     await FriendRequest.deleteMany({
       $or: [
         { from: userId, to: friendId },
