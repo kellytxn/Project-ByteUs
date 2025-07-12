@@ -43,7 +43,7 @@ const UserDetailsSchema = new mongoose.Schema({
   semester: { type: Number, required: true },
   email: { type: String, unique: true, required: true },
   password: { type: String, required: true, select: false },
-  timetable: { type: Buffer, required: false },
+  timetable: { type: String, required: false },
   profilePic: { type: String, required: false },
   modules: {
     type: [ModuleSchema],

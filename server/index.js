@@ -394,7 +394,7 @@ app.post("/timetableSnapshot", async (req, res) => {
       return res.status(404).json({ status: "error", data: "User not found" });
     }
 
-    user.timetable = Buffer.from(timetable, "base64");
+    user.timetable = timetable;
     await user.save();
 
     res.status(200).json({
@@ -646,16 +646,9 @@ app.post("/getFriendsDetails", async (req, res) => {
     const friendsWithTimetable = friends.map((friend) => {
       const friendObj = friend.toObject();
 
-      // Convert timetable Binary to base64 string
-      if (friendObj.timetable && friendObj.timetable.buffer) {
-        friendObj.timetable = Buffer.from(friendObj.timetable.buffer).toString(
-          "base64"
-        );
-      } else if (Buffer.isBuffer(friendObj.timetable)) {
-        friendObj.timetable = friendObj.timetable.toString("base64");
-      } else {
-        friendObj.timetable = null;
-      }
+      // Since timetable is already stored as a base64 string, use it directly
+      friendObj.timetable =
+        typeof friendObj.timetable === "string" ? friendObj.timetable : null;
 
       return friendObj;
     });
