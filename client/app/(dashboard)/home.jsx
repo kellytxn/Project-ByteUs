@@ -1137,6 +1137,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: "90%",
     maxHeight: "80%",
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalTitle: {
     fontSize: 18,
@@ -1150,8 +1152,8 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   timetableImage: {
-    width: 300,
-    height: 400,
+    width: "95%",
+    height: "80%",
     resizeMode: "contain",
     borderRadius: 8,
   },
@@ -1159,8 +1161,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#AE96C7",
     padding: 10,
     borderRadius: 5,
-    marginTop: 10,
-  },
+    marginTop: 40,
+    width: "95%",
+  }, 
   closeButtonText: {
     color: "white",
     textAlign: "center",
