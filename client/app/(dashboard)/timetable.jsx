@@ -236,11 +236,13 @@ const Timetable = () => {
       const token = await AsyncStorage.getItem("token");
       if (!token) throw new Error("No token found");
 
-      const result = await captureRef(timetableSnapshot, { result: 'base64'});
-      //console.log(result);
-      const response = await axios.post(`${BACKEND_URL}/timetableSnapshot`, {
-        token, timetable: result,
-      });
+      if (timetableSnapshot.current) {
+        const result = await captureRef(timetableSnapshot, { result: 'base64'});
+        //console.log(result);
+        const response = await axios.post(`${BACKEND_URL}/timetableSnapshot`, {
+          token, timetable: result,
+        });
+      }
     } catch (error) {
       console.error("Error saving timetable:", error);
       Alert.alert("Error", "Failed to save timetable");
@@ -662,7 +664,7 @@ const Timetable = () => {
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
     return (
-      <View ref={timetableSnapshot} style={styles.timetableContainer}>
+      <View style={styles.timetableContainer}>
         <View style={styles.headerContainer}>
           <TouchableOpacity
             onPress={() => setTimetableView(false)}
@@ -679,7 +681,7 @@ const Timetable = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.gridContainer}>
+        <View ref={timetableSnapshot} style={styles.gridContainer}>
           <View style={styles.timeLabelsColumn}>
             <View style={[styles.timeLabel, styles.cornerSpace]} />
               {Array.from({ length: totalHours + 1 }).map((_, i) => {
@@ -1266,7 +1268,7 @@ const styles = StyleSheet.create({
   timetableContainer: {
     flex: 1,
     paddingTop: 65,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#EBE9E3",
   },
   headerContainer: {
     flexDirection: 'row',
@@ -1287,12 +1289,14 @@ const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
     flex: 1,
+    overflow: 'hidden',
+    backgroundColor: "#EBE9E3",
   },
   timeLabelsColumn: {
     width: 70,
     zIndex: 2,
     borderRightWidth: 1,
-    borderRightColor: '#EEE',
+    borderRightColor: '#CCC',
   },
   cornerSpace: {
     height: 40,
@@ -1303,10 +1307,10 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     paddingTop: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: '#CCC',
   },
   timeLabelText: {
-    fontSize: 10,
+    fontSize: 12,
     color: '#707070',
     textAlign: 'right',
     paddingRight: 5,
@@ -1325,8 +1329,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRightWidth: 1,
-    borderRightColor: '#EEE',
-    backgroundColor: '#F9F9F9',
+    borderRightColor: '#CCC',
+    backgroundColor: "#rgba(97, 96, 96, 0.1)",
   },
   dayHeaderText: {
     fontWeight: 'bold',
@@ -1340,7 +1344,7 @@ const styles = StyleSheet.create({
   dayColumn: {
     position: 'relative',
     borderRightWidth: 1,
-    borderRightColor: '#EEE',
+    borderRightColor: '#CCC',
   },
   hourLinesContainer: {
     position: 'absolute',
@@ -1357,7 +1361,7 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#E0E0E0',
     borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
+    borderBottomColor: '#CCC',
   },
   timetableLessonCard: {
     position: 'absolute',
