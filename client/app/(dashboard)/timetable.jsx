@@ -370,22 +370,22 @@ const Timetable = () => {
           );
           let semInfo = response.data.semesterData
             .find(info => info.semester.toString() === userData.semester.toString());
-          let examDate = semInfo.examDate;
-          let examDuration = semInfo.examDuration; //in mins
           
-          let startTime = new Date(examDate);
-          let endTime = new Date(startTime.getTime() + examDuration * 60 * 1000); //convert mins to ms
-         
-          allExamInfo.push({
-            modCode: mod.moduleCode,
-            examDate: startTime.toISOString().slice(0, 10),
-            startTime: startTime,
-            endTime: endTime,
-          })
-        } catch (error) {
-          if (!Object.keys(semInfo).includes('examDate')) {
-            console.log("No exam for ", mod.moduleCode);
+            if (semInfo && semInfo.examDate) {
+            let examDate = semInfo.examDate;
+            let examDuration = semInfo.examDuration; //in mins
+            
+            let startTime = new Date(examDate);
+            let endTime = new Date(startTime.getTime() + examDuration * 60 * 1000); //convert mins to ms
+          
+            allExamInfo.push({
+              modCode: mod.moduleCode,
+              examDate: startTime.toISOString().slice(0, 10),
+              startTime: startTime,
+              endTime: endTime,
+            });
           }
+        } catch (error) {
           console.error("Error fetching exam info:", error);
         }
       }
