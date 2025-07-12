@@ -2,9 +2,7 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  FlatList,
   Modal,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -19,6 +17,7 @@ import Icon from "react-native-vector-icons/FontAwesome";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BACKEND_URL } from "../../config";
+import { FlatList, GestureHandlerRootView } from 'react-native-gesture-handler';
 
 const Timetable = () => {
   const [allMods, setAllMods] = useState([]);
@@ -369,10 +368,10 @@ const Timetable = () => {
           const response = await axios.get(
             `https://api.nusmods.com/v2/${academicYear}/modules/${mod.moduleCode}.json`
           );
-          let examDate = response.data.semesterData
-            .find(info => info.semester.toString() === userData.semester.toString()).examDate;
-          let examDuration = response.data.semesterData
-            .find(info => info.semester.toString() === userData.semester.toString()).examDuration; //in mins
+          let semInfo = response.data.semesterData
+            .find(info => info.semester.toString() === userData.semester.toString());
+          let examDate = semInfo.examDate;
+          let examDuration = semInfo.examDuration; //in mins
           
           let startTime = new Date(examDate);
           let endTime = new Date(startTime.getTime() + examDuration * 60 * 1000); //convert mins to ms
@@ -384,6 +383,9 @@ const Timetable = () => {
             endTime: endTime,
           })
         } catch (error) {
+          if (!Object.keys(semInfo).includes('examDate')) {
+            console.log("No exam for ", mod.moduleCode);
+          }
           console.error("Error fetching exam info:", error);
         }
       }
@@ -765,194 +767,201 @@ const Timetable = () => {
   };
 
   const generatorView = () => (
-    <ScrollView
-      showsVerticalScrollIndicator={true}
-      nestedScrollEnabled={true}
-      contentContainerStyle={styles.generatorContainer}
-    >
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <View style={styles.searchIcon}>
-            <Icon name="search" size={18} color="#707070" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search module code or name"
-              placeholderTextColor={"#707070"}
-              value={searchQuery}
-              onChangeText={shownMods}
-              onFocus={() => searchQuery.length > 0 && setShowDropdown(true)}
-            />
-          </View>
-        </View>
+    <GestureHandlerRootView>
+      <FlatList
+        style={styles.generatorContainer}
+        data={[]}
+        renderItem={null}
+        keyExtractor={() => "static-content"}
+        showsVerticalScrollIndicator={true}
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          <>    
+            <View style={styles.searchContainer}>
+              <View style={styles.searchBar}>
+                <View style={styles.searchIcon}>
+                  <Icon name="search" size={18} color="#707070" />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search module code or name"
+                    placeholderTextColor={"#707070"}
+                    value={searchQuery}
+                    onChangeText={shownMods}
+                    onFocus={() => searchQuery.length > 0 && setShowDropdown(true)}
+                  />
+                </View>
+              </View>
 
-        {showDropdown && (
-          <View style={styles.dropdown}>
-            {filteredMods.length > 0 ? (
-              <FlatList
-                data={filteredMods}
-                keyExtractor={(item) => item.moduleCode}
-                renderItem={({ item }) => <DropdownMods item={item} />}
-                keyboardShouldPersistTaps="always"
-                style={styles.dropdownList}
-                nestedScrollEnabled={true}
-                showsVerticalScrollIndicator={true}
-                removeClippedSubviews={false}
-                initialNumToRender={10}
-                maxToRenderPerBatch={10}
-                windowSize={10}
-              />
-            ) : (
-              <View style={styles.dropdownEmpty}>
-                <Text style={styles.dropdownEmptyText}>No modules found</Text>
+              {showDropdown && (
+                <View style={styles.dropdown}>
+                  {filteredMods.length > 0 ? (
+                    <FlatList
+                      data={filteredMods}
+                      keyExtractor={(item) => item.moduleCode}
+                      renderItem={({ item }) => <DropdownMods item={item} />}
+                      keyboardShouldPersistTaps="always"
+                      style={styles.dropdownList}
+                      nestedScrollEnabled={true}
+                      showsVerticalScrollIndicator={true}
+                      initialNumToRender={10}
+                      maxToRenderPerBatch={10}
+                      windowSize={10}
+                    />
+                  ) : (
+                    <View style={styles.dropdownEmpty}>
+                      <Text style={styles.dropdownEmptyText}>No modules found</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {selectedMods.length > 0 && (
+              <View style={styles.selectedContainer}>
+                <Text style={styles.selectedTitle}>Module Credits: {totalMCs}</Text>
+                <View style={styles.selectedList}>
+                  {selectedMods.map((mod) => (
+                    <View
+                      key={mod.moduleCode}
+                      style={[
+                        styles.selectedItem,
+                        {
+                          backgroundColor: getModuleColor(mod.moduleCode),
+                          borderColor: getModuleColor(mod.moduleCode),
+                        },
+                      ]}
+                    >
+                      <Text style={styles.selectedItemText}>{mod.moduleCode}</Text>
+                      <TouchableOpacity
+                        onPress={() => toggleModSelection(mod)}
+                        style={styles.removeButton}
+                      >
+                        <Icon name="times" size={16} color="#A9A9A9" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
               </View>
             )}
-          </View>
-        )}
-      </View>
 
-      {selectedMods.length > 0 && (
-        <View style={styles.selectedContainer}>
-          <Text style={styles.selectedTitle}>Module Credits: {totalMCs}</Text>
-          <View style={styles.selectedList}>
-            {selectedMods.map((mod) => (
-              <View
-                key={mod.moduleCode}
-                style={[
-                  styles.selectedItem,
-                  {
-                    backgroundColor: getModuleColor(mod.moduleCode),
-                    borderColor: getModuleColor(mod.moduleCode),
-                  },
-                ]}
-              >
-                <Text style={styles.selectedItemText}>{mod.moduleCode}</Text>
-                <TouchableOpacity
-                  onPress={() => toggleModSelection(mod)}
-                  style={styles.removeButton}
-                >
-                  <Icon name="times" size={16} color="#A9A9A9" />
-                </TouchableOpacity>
+            <View style={styles.examContainer}>
+              <Text style={styles.examTitle}>Total Exams: {examInfo.length}</Text>
+
+              {examClash.length > 0 && (
+                <View style={styles.examClashAlert}>
+                  {examClash.map((clash, index) => (
+                    <Text key={index} style={styles.examClashAlertMessage}>
+                      {clash[0].modCode} and {clash[1].modCode} clash on {clash[0].examDate} {formatExamTime(clash[0].startTime)}
+                    </Text>
+                  ))}
+                </View>
+              )}
+
+              {sameDayExam.length > 0 && (
+                <View style={styles.sameDayAlert}>
+                  {sameDayExam.map((exams, index) => (
+                    <Text key={index} style={styles.sameDayAlertMessage}>
+                      Multiple exams on {exams[0].examDate}: {exams.map(e => e.modCode).join(', ')}
+                    </Text>
+                  ))}
+                </View>
+              )}
+
+              {examInfo.length > 0 && (
+                <View style={styles.examGrid}>
+                  <View style={styles.examGridRow}>
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+                      <View key={day} style={[styles.examGridCell, styles.examGridHeaderCell]}>
+                        <Text style={styles.examGridHeaderText}>{day}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {generateExamGridData().map((week, weekIndex) => (
+                    <View key={`week-${weekIndex}`} style={styles.examGridRow}>               
+                      {week.map((dayData, dayIndex) => (
+                        <View 
+                          key={`${weekIndex}-${dayIndex}`} 
+                          style={[styles.examGridCell, styles.examGridDateCell]}
+                        >
+                          <Text style={styles.dateText}>{dayData.display}</Text>
+                          
+                          {dayData.exams.map((exam) => (
+                            <View 
+                              key={`${exam.modCode}-${exam.startTime}`} 
+                              style={[
+                                styles.examCard,
+                                {
+                                  backgroundColor: getModuleColor(exam.modCode),
+                                  borderColor: getModuleColor(exam.modCode),
+                                },
+                              ]}
+                            >
+                              <Text style={styles.examModule}>{exam.modCode}</Text>
+                              <Text style={styles.examTime}>
+                                {formatExamTime(exam.startTime)} - {formatExamTime(exam.endTime)}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.preferencesContainer}>
+              <View style={styles.preferencesHeader}>
+                <Text style={styles.preferencesTitle}>Preferences (optional):</Text>
+                <Text style={styles.rankTitle}>Rank:</Text>
               </View>
-            ))}
-          </View>
-        </View>
-      )}
 
-      <View style={styles.examContainer}>
-        <Text style={styles.examTitle}>Total Exams: {examInfo.length}</Text>
+              {preferences.map((pref) => (
+                <View key={pref.id} style={styles.preferenceItem}>
+                  <TouchableOpacity
+                    onPress={() => togglePrefs(pref.id)}
+                    style={styles.checkbox}
+                  >
+                    <Icon
+                      name={pref.selected ? "check-square" : "square-o"}
+                      size={24}
+                      color="#4F8EF7"
+                    />
+                  </TouchableOpacity>
 
-        {examClash.length > 0 && (
-          <View style={styles.examClashAlert}>
-            {examClash.map((clash, index) => (
-              <Text key={index} style={styles.examClashAlertMessage}>
-                {clash[0].modCode} and {clash[1].modCode} clash on {clash[0].examDate} {formatExamTime(clash[0].startTime)}
-              </Text>
-            ))}
-          </View>
-        )}
+                  <Text style={styles.preferenceLabel}>{pref.label}</Text>
 
-        {sameDayExam.length > 0 && (
-          <View style={styles.sameDayAlert}>
-            {sameDayExam.map((exams, index) => (
-              <Text key={index} style={styles.sameDayAlertMessage}>
-                Multiple exams on {exams[0].examDate}: {exams.map(e => e.modCode).join(', ')}
-              </Text>
-            ))}
-          </View>
-        )}
-
-        {examInfo.length > 0 && (
-          <View style={styles.examGrid}>
-            <View style={styles.examGridRow}>
-              {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                <View key={day} style={[styles.examGridCell, styles.examGridHeaderCell]}>
-                  <Text style={styles.examGridHeaderText}>{day}</Text>
+                  {pref.selected && (
+                    <TextInput
+                      style={styles.rankInput}
+                      keyboardType="numeric"
+                      placeholder="Rank"
+                      value={pref.rank ? pref.rank.toString() : ""}
+                      onChangeText={(text) => updateRank(pref.id, text)}
+                    />
+                  )}
                 </View>
               ))}
             </View>
 
-            {generateExamGridData().map((week, weekIndex) => (
-              <View key={`week-${weekIndex}`} style={styles.examGridRow}>               
-                {week.map((dayData, dayIndex) => (
-                  <View 
-                    key={`${weekIndex}-${dayIndex}`} 
-                    style={[styles.examGridCell, styles.examGridDateCell]}
-                  >
-                    <Text style={styles.dateText}>{dayData.display}</Text>
-                    
-                    {dayData.exams.map((exam) => (
-                      <View 
-                        key={`${exam.modCode}-${exam.startTime}`} 
-                        style={[
-                          styles.examCard,
-                          {
-                            backgroundColor: getModuleColor(exam.modCode),
-                            borderColor: getModuleColor(exam.modCode),
-                          },
-                        ]}
-                      >
-                        <Text style={styles.examModule}>{exam.modCode}</Text>
-                        <Text style={styles.examTime}>
-                          {formatExamTime(exam.startTime)} - {formatExamTime(exam.endTime)}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                ))}
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
-
-      <View style={styles.preferencesContainer}>
-        <View style={styles.preferencesHeader}>
-          <Text style={styles.preferencesTitle}>Preferences (optional):</Text>
-          <Text style={styles.rankTitle}>Rank:</Text>
-        </View>
-
-        {preferences.map((pref) => (
-          <View key={pref.id} style={styles.preferenceItem}>
             <TouchableOpacity
-              onPress={() => togglePrefs(pref.id)}
-              style={styles.checkbox}
+              style={[
+                styles.generateButton,
+                (selectedMods.length === 0 || loading) && styles.disabledButton,
+              ]}
+              onPress={handlePress}
             >
-              <Icon
-                name={pref.selected ? "check-square" : "square-o"}
-                size={24}
-                color="#4F8EF7"
-              />
+              {loading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.generateButtonText}>Generate Timetable</Text>
+              )}
             </TouchableOpacity>
-
-            <Text style={styles.preferenceLabel}>{pref.label}</Text>
-
-            {pref.selected && (
-              <TextInput
-                style={styles.rankInput}
-                keyboardType="numeric"
-                placeholder="Rank"
-                value={pref.rank ? pref.rank.toString() : ""}
-                onChangeText={(text) => updateRank(pref.id, text)}
-              />
-            )}
-          </View>
-        ))}
-      </View>
-
-      <TouchableOpacity
-        style={[
-          styles.generateButton,
-          (selectedMods.length === 0 || loading) && styles.disabledButton,
-        ]}
-        onPress={handlePress}
-      >
-        {loading ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <Text style={styles.generateButtonText}>Generate Timetable</Text>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+          </>
+        }
+      />
+    </GestureHandlerRootView>
   );
 
   return (
@@ -1019,16 +1028,18 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     borderRadius: 10,
     marginTop: 5,
-    shadowColor: "#000",
+    shadowColor: "black",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
     elevation: 5,
     borderWidth: 1,
     borderColor: "#e0e0e0",
-    zIndex: 100,
+    zIndex: 2,
+    overflow: "hidden",
   },
   dropdownList: {
+    flex: 1,
     borderRadius: 10,
   },
   dropdownItem: {
