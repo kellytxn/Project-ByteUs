@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BACKEND_URL } from "../../config";
 
-const GEMINI_API_KEY = "AIzaSyBryT1JtHupeokQTfLZN-4ECCTo20kZEt4";
+const GEMINI_API_KEY = "AIzaSyD8WWkEkO_sb6oxYCcnkmPvQNAqqxyAfOw";
 const USER_AVATAR = require("../../assets/Default.png.jpeg");
 
 // Handle formatting

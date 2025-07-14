@@ -1179,7 +1179,6 @@ const styles = StyleSheet.create({
   },
   noTimetableText: {
     fontSize: 14,
-    marginBottom: 10,
     textAlign: "center",
   },
   timetableImage: {
@@ -1192,7 +1191,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#AE96C7",
     padding: 10,
     borderRadius: 5,
-    marginTop: 40,
+    marginTop: 20,
     width: "95%",
   },
   closeButtonText: {
