@@ -254,18 +254,22 @@ const Chatbot = () => {
 
     const latestMessage = messages[messages.length - 1];
 
-    // Do not scroll if the sender is Gemini
-    if (latestMessage.sender === "gemini") return;
-
     const timer = setTimeout(() => {
-      if (flatListRef.current) {
+      if (!flatListRef.current) return;
+
+      if (latestMessage.sender === "gemini") {
+        flatListRef.current.scrollToIndex({
+          index: messages.length - 1,
+          animated: true,
+          viewPosition: 0,
+        });
+      } else {
         flatListRef.current.scrollToEnd({ animated: true });
       }
     }, 100);
 
     return () => clearTimeout(timer);
   }, [messages]);
-
   const fetchGeminiResponse = async (prompt) => {
     try {
       const response = await fetch(
@@ -637,7 +641,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#EBE9E3" },
   messagesContainer: {
     padding: 10,
-    paddingBottom: 80,
+    paddingBottom: 10,
   },
   promptsContainer: {
     paddingVertical: 10,
