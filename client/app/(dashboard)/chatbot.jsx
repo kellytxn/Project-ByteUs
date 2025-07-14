@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -11,16 +11,16 @@ import {
   Platform,
   ActivityIndicator,
   Image,
+  Animated,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useFocusEffect } from "@react-navigation/native";
 import { BACKEND_URL } from "../../config";
 
 const GEMINI_API_KEY = "AIzaSyBryT1JtHupeokQTfLZN-4ECCTo20kZEt4";
 const USER_AVATAR = require("../../assets/Default.png.jpeg");
 
-//Handle formatting
+// Handle formatting
 const renderFormattedText = (text) => {
   const lines = text.split("\n");
   const result = [];
@@ -31,7 +31,7 @@ const renderFormattedText = (text) => {
       return;
     }
 
-    //Handle bullet points (lines starting with * followed by space)
+    // Handle bullet points
     if (/^\*\s/.test(line)) {
       result.push(
         <Text key={`bullet-${lineIndex}`} style={{ marginLeft: 10 }}>
@@ -44,7 +44,7 @@ const renderFormattedText = (text) => {
     const parts = [];
     let remainingText = line;
     while (remainingText.length > 0) {
-      //Check for ***bold italic***
+      // Check for bold italic
       const boldItalicMatch = remainingText.match(/^\*\*\*([^*]+)\*\*\*/);
       if (boldItalicMatch) {
         parts.push(
@@ -59,7 +59,7 @@ const renderFormattedText = (text) => {
         continue;
       }
 
-      //Check for **bold**
+      // Check for bold
       const boldMatch = remainingText.match(/^\*\*([^*]+)\*\*/);
       if (boldMatch) {
         parts.push(
@@ -74,7 +74,7 @@ const renderFormattedText = (text) => {
         continue;
       }
 
-      //Check for *italic*
+      // Check for italic
       const italicMatch = remainingText.match(/^\*([^*]+)\*/);
       if (italicMatch) {
         parts.push(
@@ -111,6 +111,71 @@ const renderFormattedText = (text) => {
   return result;
 };
 
+const TypingIndicator = () => {
+  const [dotAnimations] = useState([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]);
+
+  useEffect(() => {
+    const animateDots = () => {
+      const animations = dotAnimations.map((anim, index) =>
+        Animated.loop(
+          Animated.sequence([
+            Animated.delay(index * 200),
+            Animated.timing(anim, {
+              toValue: 1,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim, {
+              toValue: 0,
+              duration: 300,
+              useNativeDriver: true,
+            }),
+          ])
+        )
+      );
+
+      animations.forEach((anim) => anim.start());
+
+      return () => animations.forEach((anim) => anim.stop());
+    };
+
+    animateDots();
+  }, []);
+
+  return (
+    <View style={[styles.messageRow, { flexDirection: "row" }]}>
+      <View style={[styles.message, styles.geminiMessage]}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text style={[styles.messageText, styles.geminiMessageText]}>
+            Typing
+          </Text>
+          {dotAnimations.map((anim, index) => (
+            <Animated.Text
+              key={index}
+              style={[
+                styles.messageText,
+                styles.geminiMessageText,
+                {
+                  opacity: anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.3, 1],
+                  }),
+                },
+              ]}
+            >
+              .
+            </Animated.Text>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+};
+
 const Chatbot = () => {
   const [msg, setMsg] = useState("");
   const [messages, setMessages] = useState([]);
@@ -119,6 +184,7 @@ const Chatbot = () => {
   const [welcomeMessage, setWelcomeMessage] = useState(null);
   const [profilePic, setProfilePic] = useState(null);
   const [mcsToGrad, setMcsToGrad] = useState(null);
+  const [isGeminiTyping, setIsGeminiTyping] = useState(false);
   const flatListRef = useRef(null);
 
   useEffect(() => {
@@ -143,7 +209,7 @@ const Chatbot = () => {
           );
 
           const savedNumber = Number(saved);
-          if (saved && !isNaN(savedNumber) && savedNumber > 0) {
+          if (saved && !isNaN(savedNumber)) {
             setMcsToGrad(savedNumber);
           } else {
             setMcsToGrad(null);
@@ -186,6 +252,11 @@ const Chatbot = () => {
   useEffect(() => {
     if (messages.length === 0) return;
 
+    const latestMessage = messages[messages.length - 1];
+
+    // Do not scroll if the sender is Gemini
+    if (latestMessage.sender === "gemini") return;
+
     const timer = setTimeout(() => {
       if (flatListRef.current) {
         flatListRef.current.scrollToEnd({ animated: true });
@@ -220,6 +291,7 @@ const Chatbot = () => {
   const handleModuleSuggestion = async () => {
     try {
       if (!userData) throw new Error("User data not available");
+      setIsGeminiTyping(true);
 
       const prompt = `I'm studying ${userData.course} in NUS. Recommend me some common modules to take in year ${userData.year} semester ${userData.semester}. Remember to provide the module's name and code!`;
 
@@ -243,12 +315,15 @@ const Chatbot = () => {
         id: Date.now(),
       };
       setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsGeminiTyping(false);
     }
   };
 
   const handleGpaBlueprint = async () => {
     try {
       if (!userData) throw new Error("User data or modules not available");
+      setIsGeminiTyping(true);
 
       const gradePointMap = {
         "A+": 5.0,
@@ -273,7 +348,7 @@ const Chatbot = () => {
 
       const unitsLeft = total - completedUnits;
 
-      // Filter only completed, graded (not CS or CU), and not SU
+      // Filter only completed, graded, and not SU
       const completedModules = userData.modules.filter(
         (mod) =>
           mod.completed && mod.grade !== "CS" && mod.grade !== "CU" && !mod.isSU
@@ -314,12 +389,15 @@ const Chatbot = () => {
         id: Date.now(),
       };
       setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsGeminiTyping(false);
     }
   };
 
   const handleGpaBlueprint2 = async () => {
     try {
       if (!userData) throw new Error("User data or modules not available");
+      setIsGeminiTyping(true);
 
       const gradePointMap = {
         "A+": 5.0,
@@ -344,7 +422,7 @@ const Chatbot = () => {
 
       const unitsLeft = total - completedUnits;
 
-      // Filter only completed, graded (not CS or CU), and not SU
+      // Filter only completed, graded, and not SU
       const completedModules = userData.modules.filter(
         (mod) =>
           mod.completed && mod.grade !== "CS" && mod.grade !== "CU" && !mod.isSU
@@ -386,6 +464,8 @@ const Chatbot = () => {
         id: Date.now(),
       };
       setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsGeminiTyping(false);
     }
   };
 
@@ -395,6 +475,7 @@ const Chatbot = () => {
     const userMessage = { text: msg, sender: "user", id: Date.now() };
     setMessages((prevMessages) => [...prevMessages, userMessage]);
     setMsg("");
+    setIsGeminiTyping(true);
 
     try {
       const reply = await fetchGeminiResponse(msg);
@@ -412,6 +493,8 @@ const Chatbot = () => {
         id: Date.now(),
       };
       setMessages((prevMessages) => [...prevMessages, errorMessage]);
+    } finally {
+      setIsGeminiTyping(false);
     }
   };
 
@@ -525,6 +608,7 @@ const Chatbot = () => {
               />
             </>
           }
+          ListFooterComponent={isGeminiTyping ? <TypingIndicator /> : null}
         />
         <View style={styles.inputContainer}>
           <TextInput
@@ -626,7 +710,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 5,
   },
-
   avatar: {
     width: 30,
     height: 30,
