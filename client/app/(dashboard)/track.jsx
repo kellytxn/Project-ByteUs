@@ -396,11 +396,12 @@ const Track = () => {
 
   // Calculating gpa for selected modules in gpa calculator
   const calculateGPA = () => {
-    if (selectedModules.length === 0) return 0;
+    const gradedModules = selectedModules.filter((mod) => !mod.isSU);
+    if (gradedModules.length === 0) return 0;
     let totalPoints = 0;
     let totalUnits = 0;
 
-    selectedModules.forEach((mod) => {
+    gradedModules.forEach((mod) => {
       const points = gradePointsMap[mod.grade.toUpperCase()] ?? 0;
       totalPoints += points * mod.units;
       totalUnits += mod.units;

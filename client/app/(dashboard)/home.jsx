@@ -47,10 +47,19 @@ const Home = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      getData();
-    }, 1000);
+      fetchAll();
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const fetchAll = async () => {
+    const freshUserData = await refetch();
+    if (freshUserData?.friends?.length) {
+      await fetchFriends(freshUserData.friends);
+    } else {
+      setFriends([]);
+    }
+  };
 
   // Fetch exisiting friends
   const fetchFriends = async (friendIds) => {
@@ -273,6 +282,30 @@ const Home = () => {
     }, [])
   );
 
+  async function refetch() {
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      if (!token) {
+        setError("No token found.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch user data
+      const res = await axios.post(`${BACKEND_URL}/userData`, {
+        token,
+      });
+      const freshUserData = res.data.data;
+      setUserData(freshUserData);
+      return freshUserData;
+    } catch (err) {
+      setError("Failed to fetch user data.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   async function getData() {
     try {
       const token = await AsyncStorage.getItem("token");
@@ -303,6 +336,7 @@ const Home = () => {
           mcsToGraduate: savedMCs,
         }));
       }
+      return freshUserData;
     } catch (err) {
       setError("Failed to fetch user data.");
     } finally {
@@ -333,9 +367,6 @@ const Home = () => {
           token,
           image: base64,
         });
-        setTimeout(() => {
-          getData();
-        }, 10000);
       } catch (err) {
         console.error("Upload failed", err);
       }
@@ -1163,7 +1194,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginTop: 40,
     width: "95%",
-  }, 
+  },
   closeButtonText: {
     color: "white",
     textAlign: "center",
