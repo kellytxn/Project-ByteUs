@@ -13,6 +13,7 @@ const app = express();
 
 const mongoUrl = process.env.MONGO_URI;
 const JWT_SECRET = process.env.JWT_SECRET;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 mongoose.connect(mongoUrl).then(() => {
   console.log("Database connected");

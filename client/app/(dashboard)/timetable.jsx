@@ -134,6 +134,12 @@ const Timetable = () => {
     }
 
     setSearchQuery(query);
+
+    if (query === "") {
+      setShowDropdown(false);
+      return;
+    }
+
     setShowDropdown(true);
 
     const filtered = allMods.filter((modData) => {
@@ -232,7 +238,6 @@ const Timetable = () => {
     }
   };
 
-          
   //save to user database
   const saveTimetable = async () => {
     try {
@@ -240,9 +245,12 @@ const Timetable = () => {
       if (!token) throw new Error("No token found");
 
       if (timetableSnapshot.current) {
-        const result = await captureRef(timetableSnapshot, { result: 'base64'});
+        const result = await captureRef(timetableSnapshot, {
+          result: "base64",
+        });
         const response = await axios.post(`${BACKEND_URL}/timetableSnapshot`, {
-          token, timetable: result,
+          token,
+          timetable: result,
         });
       }
     } catch (error) {
@@ -254,27 +262,34 @@ const Timetable = () => {
   //save to user device
   const downloadTimetable = async () => {
     try {
-      if (timetableSnapshot.current) {
-        const result = await captureRef(timetableSnapshot);
-        if (Platform.OS === 'android') {
-          const permission = await MediaLibrary.requestPermissionsAsync();
-          if (permission !== "granted") {
-            Alert.alert("Permission required", "Please allow access to media library");
-            return;
-          }
-        }
+      if (!timetableSnapshot.current) return;
 
-        //find or create "Timetables" album in user device
-        const albumName = "Timetables";
-        let album = await MediaLibrary.getAlbumAsync(albumName);
-        if (!album) {
-          album = await MediaLibrary.createAlbumAsync(albumName);
-        }
+      const result = await captureRef(timetableSnapshot);
 
-        const asset = await MediaLibrary.createAssetAsync(result);
-        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
-        Alert.alert("Success!", "Timetable saved to library.");
+      // request permission on both platforms
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission required",
+          "Please allow access to media library in settings."
+        );
+        return;
       }
+
+      // create asset from image result
+      const asset = await MediaLibrary.createAssetAsync(result);
+
+      // find or create "Timetables" album in user device
+      const albumName = "Timetables";
+      let album = await MediaLibrary.getAlbumAsync(albumName);
+
+      if (!album) {
+        await MediaLibrary.createAlbumAsync(albumName, asset, false);
+      } else {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+      }
+
+      Alert.alert("Success!", "Timetable saved to your Photos app.");
     } catch (error) {
       console.error("Error saving timetable to device:", error);
       Alert.alert("Error", "Failed to save timetable to device");
@@ -356,8 +371,9 @@ const Timetable = () => {
           let response = await axios.get(
             `https://api.nusmods.com/v2/${academicYear}/modules/${mod.moduleCode}.json`
           );
-          let allSemClasses = response.data.semesterData
-            .filter((info) => info.semester.toString() === userData.semester.toString());
+          let allSemClasses = response.data.semesterData.filter(
+            (info) => info.semester.toString() === userData.semester.toString()
+          );
           let allClasses = allSemClasses[0].timetable;
           let classesByType = {};
 
@@ -401,16 +417,19 @@ const Timetable = () => {
           const response = await axios.get(
             `https://api.nusmods.com/v2/${academicYear}/modules/${mod.moduleCode}.json`
           );
-          let semInfo = response.data.semesterData
-            .find(info => info.semester.toString() === userData.semester.toString());
-          
-            if (semInfo && semInfo.examDate) {
+          let semInfo = response.data.semesterData.find(
+            (info) => info.semester.toString() === userData.semester.toString()
+          );
+
+          if (semInfo && semInfo.examDate) {
             let examDate = semInfo.examDate;
             let examDuration = semInfo.examDuration; //in mins
-            
+
             let startTime = new Date(examDate);
-            let endTime = new Date(startTime.getTime() + examDuration * 60 * 1000); //convert mins to ms
-          
+            let endTime = new Date(
+              startTime.getTime() + examDuration * 60 * 1000
+            ); //convert mins to ms
+
             allExamInfo.push({
               modCode: mod.moduleCode,
               examDate: startTime.toISOString().slice(0, 10),
@@ -453,9 +472,11 @@ const Timetable = () => {
           exams.sort((a, b) => a.startTime - b.startTime);
 
           for (let i = 0; i < exams.length - 1; i++) {
-            if (exams[i].startTime < exams[i + 1].endTime && 
-              exams[i].endTime > exams[i + 1].startTime) {
-                clashes.push([exams[i], exams[i + 1]]);
+            if (
+              exams[i].startTime < exams[i + 1].endTime &&
+              exams[i].endTime > exams[i + 1].startTime
+            ) {
+              clashes.push([exams[i], exams[i + 1]]);
             }
           }
         }
@@ -490,17 +511,30 @@ const Timetable = () => {
 
   const generateExamGridData = () => {
     if (examInfo.length === 0) return [];
-    
-    const examDates = [...new Set(examInfo.map(e => e.examDate))].sort();
+
+    const examDates = [...new Set(examInfo.map((e) => e.examDate))].sort();
     const startDate = new Date(examDates[0]);
     const endDate = new Date(examDates[examDates.length - 1]);
-    
+
     const firstMonday = new Date(startDate);
-    firstMonday.setDate(startDate.getDate() - (startDate.getDay() + 6) % 7);
-    
+    firstMonday.setDate(startDate.getDate() - ((startDate.getDay() + 6) % 7));
+
     const gridData = [];
     const current = new Date(firstMonday);
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
     const displayedMonths = {};
 
     while (current <= endDate) {
@@ -508,30 +542,32 @@ const Timetable = () => {
 
       for (let i = 0; i < 7; i++) {
         const date = current.toISOString().slice(0, 10);
-        const exams = examInfo.filter(e => e.examDate === date);
+        const exams = examInfo.filter((e) => e.examDate === date);
         const dayOfMonth = current.getDate();
         const month = current.getMonth();
 
-        let displayDate = '';
+        let displayDate = "";
         if (dayOfMonth === 1 || !displayedMonths[month]) {
-          displayDate = `${dayOfMonth < 10 ? '0' : ''}${dayOfMonth}-${months[month]}`;
+          displayDate = `${dayOfMonth < 10 ? "0" : ""}${dayOfMonth}-${
+            months[month]
+          }`;
           displayedMonths[month] = true;
         } else {
-          displayDate = `${dayOfMonth < 10 ? '0' : ''}${dayOfMonth}`;
+          displayDate = `${dayOfMonth < 10 ? "0" : ""}${dayOfMonth}`;
         }
 
         week.push({
           date: date,
           display: displayDate,
-          exams: exams.sort((a, b) => a.startTime - b.startTime)
+          exams: exams.sort((a, b) => a.startTime - b.startTime),
         });
-        
+
         current.setDate(current.getDate() + 1);
       }
-      
+
       gridData.push(week);
     }
-    
+
     return gridData;
   };
 
@@ -546,15 +582,15 @@ const Timetable = () => {
 
   const formatExamTime = (date) => {
     const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const period = hours >= 12 ? 'PM' : 'AM';
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    const period = hours >= 12 ? "PM" : "AM";
     const displayHours = hours % 12 || 12;
     return `${displayHours}:${minutes} ${period}`;
   };
 
   const timeToMinutes = (timeStr) => {
     if (!timeStr) return 0;
-    const padded = timeStr.toString().padStart(4, '0');
+    const padded = timeStr.toString().padStart(4, "0");
     const hours = parseInt(padded.substring(0, 2));
     const minutes = parseInt(padded.substring(2));
     return hours * 60 + minutes;
@@ -690,7 +726,7 @@ const Timetable = () => {
   };
 
   const timetableViewer = () => {
-    const { width } = Dimensions.get('window');
+    const { width } = Dimensions.get("window");
     const dayWidth = (width - 70) / 5;
     const timetableStart = 8; //8am
     const timetableEnd = 17; //6pm
@@ -702,19 +738,11 @@ const Timetable = () => {
       <View style={styles.timetableContainer}>
         <View style={styles.headerContainer}>
           <TouchableOpacity
-            onPress={async () => {
-              try {
-                await saveTimetable();
-                await downloadTimetable();
-              } catch (error) {
-                console.error("Save error:", error);
-              }
-            }}
+            onPress={() => setTimetableView(false)}
             style={styles.backButton}
           >
             <Icon name="arrow-left" size={20} color="#2C3E50" />
           </TouchableOpacity>
-
           <TouchableOpacity
             onPress={() => saveTimetable() && downloadTimetable()}
             style={styles.saveButton}
@@ -726,81 +754,90 @@ const Timetable = () => {
         <View ref={timetableSnapshot} style={styles.gridContainer}>
           <View style={styles.timeLabelsColumn}>
             <View style={[styles.timeLabel, styles.cornerSpace]} />
-              {Array.from({ length: totalHours + 1 }).map((_, i) => {
-                const hour = timetableStart + i;
-                const period = hour >= 12 ? "PM" : "AM";
-                const displayHour = hour % 12 || 12;
-            
-                return (
-                  <View 
-                    key={`time-${hour}`} 
-                    style={[styles.timeLabel, { height: hourHeight }]}
-                  >
-                    <Text style={styles.timeLabelText}>{`${displayHour}:00 ${period}`}</Text>
-                  </View>
-                );
-              })}
+            {Array.from({ length: totalHours + 1 }).map((_, i) => {
+              const hour = timetableStart + i;
+              const period = hour >= 12 ? "PM" : "AM";
+              const displayHour = hour % 12 || 12;
+
+              return (
+                <View
+                  key={`time-${hour}`}
+                  style={[styles.timeLabel, { height: hourHeight }]}
+                >
+                  <Text
+                    style={styles.timeLabelText}
+                  >{`${displayHour}:00 ${period}`}</Text>
+                </View>
+              );
+            })}
+          </View>
+
+          <View style={styles.daysSection}>
+            <View style={styles.dayHeadersRow}>
+              {days.map((day) => (
+                <View
+                  key={day}
+                  style={[styles.dayHeaderCell, { width: dayWidth }]}
+                >
+                  <Text style={styles.dayHeaderText}>{shortformDay(day)}</Text>
+                </View>
+              ))}
             </View>
 
-            <View style={styles.daysSection}>
-              <View style={styles.dayHeadersRow}>
-                {days.map(day => (
-                  <View 
-                    key={day} 
-                    style={[styles.dayHeaderCell, { width: dayWidth }]}
-                  >
-                    <Text style={styles.dayHeaderText}>{shortformDay(day)}</Text>
-                  </View>
-                ))}
-              </View>
-
-              <View style={styles.hourLinesContainer}>
-                {Array.from({ length: totalHours + 2 }).map((_, i) => (
-                  <View
-                    key={`line-${i}`}
-                    style={[
-                      styles.hourLine,
-                      { top: i * hourHeight }
-                    ]}
-                  />
-                ))}
-              </View>
-
-              <View style={[styles.dayColumns, { height: (totalHours + 1) * hourHeight }]}>
-                {days.map(day => (
-                  <View 
-                    key={day} 
-                    style={[styles.dayColumn, { width: dayWidth }]}
-                  >
-                    {groupedLessons[day].map(lesson => {
-                      const startMinutes = timeToMinutes(lesson.startTime);
-                      const endMinutes = timeToMinutes(lesson.endTime);
-                      const top = ((startMinutes - timetableStart * 60) / 60) * hourHeight;
-                      const height = ((endMinutes - startMinutes) / 60) * hourHeight;
-                      
-                      return (
-                        <TouchableOpacity
-                          key={`${lesson.modCode}-${lesson.lessonType}`}
-                          style={[
-                            styles.timetableLessonCard,
-                            { 
-                              top,
-                              height,
-                              backgroundColor: getModuleColor(lesson.modCode)
-                            }
-                          ]}
-                          onPress={() => handleLessonPress(lesson)}
-                        >
-                          <Text style={styles.timetableLessonCode}>{lesson.modCode}</Text>
-                          <Text style={styles.timetableLessonType}>{lesson.lessonType}</Text>
-                          <Text style={styles.timetableLessonVenue}>{lesson.venue}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                ))}
-              </View>
+            <View style={styles.hourLinesContainer}>
+              {Array.from({ length: totalHours + 2 }).map((_, i) => (
+                <View
+                  key={`line-${i}`}
+                  style={[styles.hourLine, { top: i * hourHeight }]}
+                />
+              ))}
             </View>
+
+            <View
+              style={[
+                styles.dayColumns,
+                { height: (totalHours + 1) * hourHeight },
+              ]}
+            >
+              {days.map((day) => (
+                <View key={day} style={[styles.dayColumn, { width: dayWidth }]}>
+                  {groupedLessons[day].map((lesson) => {
+                    const startMinutes = timeToMinutes(lesson.startTime);
+                    const endMinutes = timeToMinutes(lesson.endTime);
+                    const top =
+                      ((startMinutes - timetableStart * 60) / 60) * hourHeight;
+                    const height =
+                      ((endMinutes - startMinutes) / 60) * hourHeight;
+
+                    return (
+                      <TouchableOpacity
+                        key={`${lesson.modCode}-${lesson.lessonType}`}
+                        style={[
+                          styles.timetableLessonCard,
+                          {
+                            top,
+                            height,
+                            backgroundColor: getModuleColor(lesson.modCode),
+                          },
+                        ]}
+                        onPress={() => handleLessonPress(lesson)}
+                      >
+                        <Text style={styles.timetableLessonCode}>
+                          {lesson.modCode}
+                        </Text>
+                        <Text style={styles.timetableLessonType}>
+                          {lesson.lessonType}
+                        </Text>
+                        <Text style={styles.timetableLessonVenue}>
+                          {lesson.venue}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ))}
+            </View>
+          </View>
         </View>
       </View>
     );
@@ -815,7 +852,7 @@ const Timetable = () => {
       showsVerticalScrollIndicator={true}
       keyboardShouldPersistTaps="handled"
       ListHeaderComponent={
-        <>    
+        <>
           <View style={styles.searchContainer}>
             <View style={styles.searchBar}>
               <View style={styles.searchIcon}>
@@ -826,7 +863,9 @@ const Timetable = () => {
                   placeholderTextColor={"#707070"}
                   value={searchQuery}
                   onChangeText={shownMods}
-                  onFocus={() => searchQuery.length > 0 && setShowDropdown(true)}
+                  onFocus={() =>
+                    searchQuery.length > 0 && setShowDropdown(true)
+                  }
                 />
               </View>
             </View>
@@ -848,7 +887,9 @@ const Timetable = () => {
                   />
                 ) : (
                   <View style={styles.dropdownEmpty}>
-                    <Text style={styles.dropdownEmptyText}>No modules found</Text>
+                    <Text style={styles.dropdownEmptyText}>
+                      No modules found
+                    </Text>
                   </View>
                 )}
               </View>
@@ -857,7 +898,9 @@ const Timetable = () => {
 
           {selectedMods.length > 0 && (
             <View style={styles.selectedContainer}>
-              <Text style={styles.selectedTitle}>Module Credits: {totalMCs}</Text>
+              <Text style={styles.selectedTitle}>
+                Module Credits: {totalMCs}
+              </Text>
               <View style={styles.selectedList}>
                 {selectedMods.map((mod) => (
                   <View
@@ -870,7 +913,9 @@ const Timetable = () => {
                       },
                     ]}
                   >
-                    <Text style={styles.selectedItemText}>{mod.moduleCode}</Text>
+                    <Text style={styles.selectedItemText}>
+                      {mod.moduleCode}
+                    </Text>
                     <TouchableOpacity
                       onPress={() => toggleModSelection(mod)}
                       style={styles.removeButton}
@@ -890,7 +935,8 @@ const Timetable = () => {
               <View style={styles.examClashAlert}>
                 {examClash.map((clash, index) => (
                   <Text key={index} style={styles.examClashAlertMessage}>
-                    {clash[0].modCode} and {clash[1].modCode} clash on {clash[0].examDate} {formatExamTime(clash[0].startTime)}
+                    {clash[0].modCode} and {clash[1].modCode} clash on{" "}
+                    {clash[0].examDate} {formatExamTime(clash[0].startTime)}
                   </Text>
                 ))}
               </View>
@@ -900,7 +946,8 @@ const Timetable = () => {
               <View style={styles.sameDayAlert}>
                 {sameDayExam.map((exams, index) => (
                   <Text key={index} style={styles.sameDayAlertMessage}>
-                    Multiple exams on {exams[0].examDate}: {exams.map(e => e.modCode).join(', ')}
+                    Multiple exams on {exams[0].examDate}:{" "}
+                    {exams.map((e) => e.modCode).join(", ")}
                   </Text>
                 ))}
               </View>
@@ -909,25 +956,30 @@ const Timetable = () => {
             {examInfo.length > 0 && (
               <View style={styles.examGrid}>
                 <View style={styles.examGridRow}>
-                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-                    <View key={day} style={[styles.examGridCell, styles.examGridHeaderCell]}>
-                      <Text style={styles.examGridHeaderText}>{day}</Text>
-                    </View>
-                  ))}
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+                    (day) => (
+                      <View
+                        key={day}
+                        style={[styles.examGridCell, styles.examGridHeaderCell]}
+                      >
+                        <Text style={styles.examGridHeaderText}>{day}</Text>
+                      </View>
+                    )
+                  )}
                 </View>
 
                 {generateExamGridData().map((week, weekIndex) => (
-                  <View key={`week-${weekIndex}`} style={styles.examGridRow}>               
+                  <View key={`week-${weekIndex}`} style={styles.examGridRow}>
                     {week.map((dayData, dayIndex) => (
-                      <View 
-                        key={`${weekIndex}-${dayIndex}`} 
+                      <View
+                        key={`${weekIndex}-${dayIndex}`}
                         style={[styles.examGridCell, styles.examGridDateCell]}
                       >
                         <Text style={styles.dateText}>{dayData.display}</Text>
-                        
+
                         {dayData.exams.map((exam) => (
-                          <View 
-                            key={`${exam.modCode}-${exam.startTime}`} 
+                          <View
+                            key={`${exam.modCode}-${exam.startTime}`}
                             style={[
                               styles.examCard,
                               {
@@ -936,9 +988,12 @@ const Timetable = () => {
                               },
                             ]}
                           >
-                            <Text style={styles.examModule}>{exam.modCode}</Text>
+                            <Text style={styles.examModule}>
+                              {exam.modCode}
+                            </Text>
                             <Text style={styles.examTime}>
-                              {formatExamTime(exam.startTime)} - {formatExamTime(exam.endTime)}
+                              {formatExamTime(exam.startTime)} -{" "}
+                              {formatExamTime(exam.endTime)}
                             </Text>
                           </View>
                         ))}
@@ -952,7 +1007,9 @@ const Timetable = () => {
 
           <View style={styles.preferencesContainer}>
             <View style={styles.preferencesHeader}>
-              <Text style={styles.preferencesTitle}>Preferences (optional):</Text>
+              <Text style={styles.preferencesTitle}>
+                Preferences (optional):
+              </Text>
               <Text style={styles.rankTitle}>Rank:</Text>
             </View>
 
@@ -1178,77 +1235,77 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   examClashAlert: {
-    backgroundColor: '#FFEBEE',
+    backgroundColor: "#FFEBEE",
     padding: 10,
     borderRadius: 5,
     marginBottom: 10,
     borderLeftWidth: 4,
-    borderLeftColor: '#F44336',
+    borderLeftColor: "#F44336",
   },
   examClashAlertMessage: {
-    color: '#B71C1C',
+    color: "#B71C1C",
     fontSize: 13,
   },
   sameDayAlert: {
-    backgroundColor: '#FFF3E0',
+    backgroundColor: "#FFF3E0",
     padding: 10,
     borderRadius: 5,
     marginBottom: 10,
     borderLeftWidth: 4,
-    borderLeftColor: '#FF9800',
+    borderLeftColor: "#FF9800",
   },
   sameDayAlertMessage: {
-    color: '#E65100',
+    color: "#E65100",
     fontSize: 13,
   },
   examGrid: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
     borderRadius: 5,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginTop: 5,
   },
   examGridRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     flex: 1,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: "#E0E0E0",
   },
   examGridCell: {
     flex: 1,
     borderRightWidth: 1,
-    borderRightColor: '#E0E0E0',
+    borderRightColor: "#E0E0E0",
     padding: 1,
-    backgroundColor: '#FFF',
-    justifyContent: 'flex-start', 
+    backgroundColor: "#FFF",
+    justifyContent: "flex-start",
   },
   examGridHeaderCell: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
   },
   examGridDateCell: {
-    minHeight: 60, 
-    justifyContent: 'flex-start',
+    minHeight: 60,
+    justifyContent: "flex-start",
   },
   examGridHeaderText: {
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     paddingVertical: 5,
   },
   dateText: {
-    textAlign: 'left',
+    textAlign: "left",
     marginBottom: 5,
     fontSize: 12,
   },
   examCard: {
-    width: '100%', 
-    backgroundColor: '#F8F9FA',
+    width: "100%",
+    backgroundColor: "#F8F9FA",
     padding: 4,
     borderRadius: 4,
     marginBottom: 4,
   },
   examModule: {
-    fontWeight: '600',
+    fontWeight: "600",
     fontSize: 10,
   },
   examTime: {
@@ -1322,10 +1379,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#EBE9E3",
   },
   headerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
     paddingHorizontal: 15,
     paddingVertical: 10,
   },
@@ -1338,105 +1395,105 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   gridContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     flex: 1,
-    overflow: 'hidden',
+    overflow: "hidden",
     backgroundColor: "#EBE9E3",
   },
   timeLabelsColumn: {
     width: 70,
     zIndex: 2,
     borderRightWidth: 1,
-    borderRightColor: '#CCC',
+    borderRightColor: "#CCC",
   },
   cornerSpace: {
     height: 40,
     borderBottomWidth: 1,
-    borderBottomColor: '#CCC',
+    borderBottomColor: "#CCC",
   },
   timeLabel: {
-    justifyContent: 'flex-start',
+    justifyContent: "flex-start",
     paddingTop: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#CCC',
+    borderBottomColor: "#CCC",
   },
   timeLabelText: {
     fontSize: 12,
-    color: '#707070',
-    textAlign: 'right',
+    color: "#707070",
+    textAlign: "right",
     paddingRight: 5,
   },
   daysSection: {
     flex: 1,
-    position: 'relative',
+    position: "relative",
   },
   dayHeadersRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     height: 40,
     borderBottomWidth: 1,
-    borderBottomColor: '#CCC',
+    borderBottomColor: "#CCC",
   },
   dayHeaderCell: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     borderRightWidth: 1,
-    borderRightColor: '#CCC',
+    borderRightColor: "#CCC",
     backgroundColor: "#rgba(97, 96, 96, 0.1)",
   },
   dayHeaderText: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     fontSize: 12,
-    color: '#2C3E50',
+    color: "#2C3E50",
   },
   dayColumns: {
-    flexDirection: 'row',
-    position: 'relative',
+    flexDirection: "row",
+    position: "relative",
   },
   dayColumn: {
-    position: 'relative',
+    position: "relative",
     borderRightWidth: 1,
-    borderRightColor: '#CCC',
+    borderRightColor: "#CCC",
   },
   hourLinesContainer: {
-    position: 'absolute',
-    top: 40, 
+    position: "absolute",
+    top: 40,
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 1, 
+    zIndex: 1,
   },
   hourLine: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     height: 1,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: "#E0E0E0",
     borderBottomWidth: 1,
-    borderBottomColor: '#CCC',
+    borderBottomColor: "#CCC",
   },
   timetableLessonCard: {
-    position: 'absolute',
+    position: "absolute",
     left: 2,
     right: 2,
     padding: 4,
     borderRadius: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
+    borderColor: "rgba(0,0,0,0.1)",
     zIndex: 3,
   },
   timetableLessonCode: {
-    fontWeight: '700',
+    fontWeight: "700",
     fontSize: 11,
   },
   timetableLessonType: {
     fontSize: 10,
     marginVertical: 2,
-    colour: '#C0C0C0',
+    colour: "#C0C0C0",
   },
   timetableLessonVenue: {
     fontSize: 9,
-    color: '#707070',
+    color: "#707070",
   },
   modalContainer: {
     flex: 1,

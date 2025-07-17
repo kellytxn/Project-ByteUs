@@ -641,6 +641,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#EBE9E3" },
   messagesContainer: {
     padding: 10,
+    paddingTop: 20,
     paddingBottom: 10,
   },
   promptsContainer: {
