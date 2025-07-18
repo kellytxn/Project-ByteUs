@@ -12,14 +12,12 @@ import {
 } from "react-native";
 import { useRouter, Link } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import axios from "axios";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
-import FormInput from "../../components/formInput";
-import DropdownInput from "../../components/dropDownInput";
-import ErrorMessage from "../../components/errorMessage";
+import FormInput from "../../components/auth/formInput";
+import DropdownInput from "../../components/auth/dropDownInput";
+import ErrorMessage from "../../components/auth/errorMessage";
 import { validateEmail } from "../../utils/validation";
-import { BACKEND_URL } from "../../config";
 import { registerUser, loginUser } from "../../services/authService";
 
 const yearOptions = [...Array(6)].map((_, i) => ({

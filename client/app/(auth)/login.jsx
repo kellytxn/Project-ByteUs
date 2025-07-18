@@ -12,8 +12,8 @@ import {
 import { Link, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import CustomInput from "../../components/customInput";
-import ErrorMessage from "../../components/errorMessage";
+import CustomInput from "../../components/auth/customInput";
+import ErrorMessage from "../../components/auth/errorMessage";
 import { login } from "../../services/authService";
 
 const Login = () => {

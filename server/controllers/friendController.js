@@ -1,4 +1,4 @@
-const User = require("../models/UserDetails");
+const user = require("../models/UserDetails");
 const jwt = require("jsonwebtoken");
 const FriendRequest = require("../models/FriendRequest");
 
@@ -10,9 +10,11 @@ exports.getFriendsDetails = async (req, res) => {
       return res.status(400).json({ message: "Invalid friend IDs provided" });
     }
 
-    const friends = await User.find({
-      _id: { $in: friendIds },
-    }).select("_id name email timetable profilePic");
+    const friends = await user
+      .find({
+        _id: { $in: friendIds },
+      })
+      .select("_id name email timetable profilePic");
 
     const friendsWithTimetable = friends.map((friend) => {
       const friendObj = friend.toObject();
@@ -43,7 +45,7 @@ exports.sendFriendRequest = async (req, res) => {
 
     // Verify token and get user info
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const requestUser = await User.findOne({ email: decoded.email });
+    const requestUser = await user.findOne({ email: decoded.email });
 
     if (!requestUser) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -51,14 +53,14 @@ exports.sendFriendRequest = async (req, res) => {
 
     // Check if users exist
     const [fromUser, toUser] = await Promise.all([
-      User.findOne({ email: fromEmail }),
-      User.findOne({ email: toEmail }),
+      user.findOne({ email: fromEmail }),
+      user.findOne({ email: toEmail }),
     ]);
 
     if (!fromUser || !toUser) {
       return res
         .status(404)
-        .json({ message: "User not found. Please check the email address" });
+        .json({ message: "user not found. Please check the email address" });
     }
 
     // Prevent self-friending
@@ -129,8 +131,8 @@ exports.acceptFriendRequest = async (req, res) => {
     }
 
     const [fromUser, toUser] = await Promise.all([
-      User.findById(request.from),
-      User.findById(request.to),
+      user.findById(request.from),
+      user.findById(request.to),
     ]);
 
     if (!fromUser || !toUser) {
@@ -234,7 +236,7 @@ exports.deleteFriend = async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const requestingUser = await User.findOne({ email: decoded.email });
+    const requestingUser = await user.findOne({ email: decoded.email });
 
     if (!requestingUser) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -247,12 +249,12 @@ exports.deleteFriend = async (req, res) => {
     }
 
     const [user, friend] = await Promise.all([
-      User.findById(userId),
-      User.findById(friendId),
+      user.findById(userId),
+      user.findById(friendId),
     ]);
 
     if (!user || !friend) {
-      return res.status(404).json({ message: "User or friend not found" });
+      return res.status(404).json({ message: "user or friend not found" });
     }
 
     // Remove friend from both users' friend lists
