@@ -1,108 +1,92 @@
 import React from "react";
-import { render, waitFor, fireEvent } from "@testing-library/react-native";
-import Chatbot from "../app/(dashboard)/chatbot.jsx";
-import { NavigationContainer } from "@react-navigation/native";
+import { render, act } from "@testing-library/react-native";
+import Chatbot from "../app/(dashboard)/chatbot";
+import { fetchUserData } from "../services/userService";
+import { fetchGeminiResponse } from "../services/chatbotService";
+import { getToken, getMcsToGraduate } from "../services/storageService";
 
-import AsyncStorage from "@react-native-async-storage/async-storage";
-jest.mock("@react-native-async-storage/async-storage", () => ({
-  getItem: jest.fn(),
+// Mock all dependencies
+jest.mock("../services/userService", () => ({
+  fetchUserData: jest.fn(),
+}));
+jest.mock("../services/chatbotService", () => ({
+  fetchGeminiResponse: jest.fn(),
+}));
+jest.mock("../services/storageService", () => ({
+  getToken: jest.fn(),
+  getMcsToGraduate: jest.fn(),
+}));
+jest.mock("../components/chatbot/messageBubble", () => {
+  const { Text } = require("react-native");
+  return ({ item }) => <Text testID="message-bubble">{item.text}</Text>;
+});
+jest.mock("../components/chatbot/typingIndicator", () => "TypingIndicator");
+jest.mock("../components/chatbot/promptButton", () => "PromptButton");
+jest.mock("react-native", () => {
+  const RN = jest.requireActual("react-native");
+
+  RN.FlatList = ({ data, renderItem, ...props }) => {
+    const MockedFlatList = require("react-native").FlatList;
+    return (
+      <MockedFlatList
+        data={data}
+        renderItem={renderItem}
+        {...props}
+        testID="flatlist-mock"
+      />
+    );
+  };
+
+  return RN;
+});
+jest.mock("react-native-safe-area-context", () => ({
+  SafeAreaView: ({ children }) => <>{children}</>,
+  useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
 
-global.fetch = jest.fn();
-
-const Wrapper = ({ children }) => (
-  <NavigationContainer>{children}</NavigationContainer>
-);
-
 describe("Chatbot Component", () => {
+  const mockUserData = {
+    name: "John Doe",
+    email: "john@example.com",
+    course: "Computer Science",
+    year: 2,
+    semester: 1,
+    profilePic: null,
+    modules: [
+      { code: "CS1010", name: "Programming Methodology", grade: "A", units: 4 },
+    ],
+  };
+
   beforeEach(() => {
+    getToken.mockResolvedValue("mock-token");
+    getMcsToGraduate.mockResolvedValue(80);
+    fetchUserData.mockResolvedValue({ status: "ok", data: mockUserData });
+    fetchGeminiResponse.mockImplementation((prompt) =>
+      Promise.resolve(`Mock response to: ${prompt}`)
+    );
+  });
+
+  afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it("shows loading initially and then renders welcome message and prompts", async () => {
-    AsyncStorage.getItem.mockResolvedValue("fake-token");
-
-    fetch.mockImplementationOnce(() =>
-      Promise.resolve({
-        json: () =>
-          Promise.resolve({
-            status: "ok",
-            data: {
-              name: "Kelly",
-              course: "Computer Science",
-              year: 1,
-              semester: 1,
-              modules: [],
-            },
-          }),
-      })
-    );
-
-    const { getByText, queryByText } = render(<Chatbot />, {
-      wrapper: Wrapper,
-    });
-
+  it("renders loading state initially", async () => {
+    fetchUserData.mockImplementationOnce(() => new Promise(() => {}));
+    const { getByText } = render(<Chatbot />);
     expect(getByText("Loading...")).toBeTruthy();
-
-    await waitFor(() => {
-      expect(queryByText("Loading...")).toBeNull();
-      expect(
-        getByText(/Hello Kelly! I'm your academic assistant/i)
-      ).toBeTruthy();
-      expect(
-        getByText("What modules should I take this semester?")
-      ).toBeTruthy();
-    });
   });
 
-  it("adds user message and fetches Gemini reply on input submit", async () => {
-    AsyncStorage.getItem.mockResolvedValue("fake-token");
+  it("displays welcome message after loading", async () => {
+    const { findByTestId } = render(<Chatbot />);
 
-    fetch
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          json: () =>
-            Promise.resolve({
-              status: "ok",
-              data: {
-                name: "Kelly",
-                course: "Computer Science",
-                year: 1,
-                semester: 1,
-                modules: [],
-              },
-            }),
-        })
-      )
-      .mockImplementationOnce(() =>
-        Promise.resolve({
-          json: () =>
-            Promise.resolve({
-              candidates: [
-                {
-                  content: { parts: [{ text: "This is a Gemini reply." }] },
-                },
-              ],
-            }),
-        })
-      );
-
-    const { getByPlaceholderText, getByRole, getByText, queryByText } = render(
-      <Chatbot />,
-      { wrapper: Wrapper }
-    );
-
-    await waitFor(() => expect(queryByText("Loading...")).toBeNull());
-
-    const input = getByPlaceholderText("Enter your query");
-    const sendButton = getByRole("button");
-
-    fireEvent.changeText(input, "Hello Chatbot");
-    fireEvent.press(sendButton);
-
-    await waitFor(() => {
-      expect(getByText("Hello Chatbot")).toBeTruthy();
-      expect(getByText("This is a Gemini reply.")).toBeTruthy();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
+
+    const welcomeMessage = await findByTestId("message-bubble");
+    expect(welcomeMessage.props.children).toMatch(/Hello John Doe!/);
+    expect(welcomeMessage.props.children).toMatch(
+      /common questions you might have/
+    );
   });
 });

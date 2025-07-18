@@ -1,25 +1,20 @@
-// Mock AsyncStorage
+// Mock all dependencies
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
 );
-
-// Mock expo-router globally (before importing Login)
 const mockReplace = jest.fn();
-
 jest.mock("expo-router", () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),
   Link: ({ children }) => children,
 }));
+jest.mock("axios");
 
 import React from "react";
 import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import Login from "../app/(auth)/login";
 import axios from "axios";
-
-// Mock axios post
-jest.mock("axios");
 
 describe("Login Screen", () => {
   beforeEach(() => {

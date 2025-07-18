@@ -1,13 +1,21 @@
+jest.mock("react-native-gesture-handler", () => {
+  const View = require("react-native").View;
+  return {
+    __esModule: true,
+    ...jest.requireActual("react-native-gesture-handler"),
+    GestureHandlerRootView: View,
+  };
+});
+
 import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 import Timetable from "../app/(dashboard)/timetable.jsx";
 import axios from "axios";
 
-// Mock icons
+// Mock all dependencies
 jest.mock("react-native-vector-icons/FontAwesome", () => "Icon");
 jest.mock("@expo/vector-icons", () => ({
   Ionicons: "Ionicons",
 }));
-
 jest.mock("axios");
 jest.mock("@react-native-async-storage/async-storage", () => ({
   getItem: jest.fn(() => Promise.resolve("mock-token")),

@@ -3,15 +3,13 @@ import { render, waitFor } from "@testing-library/react-native";
 import Home from "../app/index";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Mock router from expo-router
+// Mock all dependencies
 jest.mock("expo-router", () => ({
   useRouter: () => ({
     replace: jest.fn(),
     push: jest.fn(),
   }),
 }));
-
-// Mock AsyncStorage
 jest.mock("@react-native-async-storage/async-storage", () => ({
   getItem: jest.fn(),
 }));

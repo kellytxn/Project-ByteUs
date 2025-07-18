@@ -65,6 +65,10 @@ describe("Home Component", () => {
   });
 
   it("displays error message when API call fails", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
     axios.post.mockRejectedValue(new Error("Network error"));
 
     const { getByText, queryByText } = render(
@@ -78,5 +82,7 @@ describe("Home Component", () => {
       expect(queryByText("Kelly")).toBeNull();
       expect(getByText("Failed to fetch user data.")).toBeTruthy();
     });
+
+    consoleErrorSpy.mockRestore();
   });
 });

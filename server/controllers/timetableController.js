@@ -1,4 +1,4 @@
-const user = require("../models/UserDetails");
+const User = require("../models/UserDetails");
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = process.env.JWT_SECRET;
 const nusmods = require("../utils/nusmods");
@@ -68,10 +68,10 @@ exports.timetableSnapshot = async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await user.findOne({ email: decoded.email });
+    const user = await User.findOne({ email: decoded.email });
 
     if (!user) {
-      return res.status(404).json({ status: "error", data: "user not found" });
+      return res.status(404).json({ status: "error", data: "User not found" });
     }
 
     user.timetable = timetable;
