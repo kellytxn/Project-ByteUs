@@ -3,7 +3,6 @@ import {
   StyleSheet,
   Text,
   View,
-  TextInput,
   Pressable,
   Image,
   TouchableWithoutFeedback,
@@ -11,44 +10,31 @@ import {
   Platform,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
-import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { BACKEND_URL } from "../../config";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import CustomInput from "../../components/customInput";
+import ErrorMessage from "../../components/errorMessage";
+import { login } from "../../services/authService";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
-
   const router = useRouter();
 
   const handleLogin = async () => {
     setError(null);
-    const userData = {
-      email: email,
-      password: password,
-    };
-
-    axios
-      .post(`${BACKEND_URL}/login`, userData)
-      .then((res) => {
-        console.log(res.data);
-        if (res.data.status === "ok") {
-          console.log("Login successful, navigating to /home");
-          AsyncStorage.setItem("token", res.data.data);
-          router.replace("/home");
-        } else {
-          setError(res.data.data || "Invalid email or password");
-        }
-      })
-      .catch((error) => {
-        if (error.response && error.response.data) {
-          setError(error.response.data.data || "Invalid email or password");
-        } else {
-          setError(error.message);
-        }
-      });
+    try {
+      const res = await login(email, password);
+      if (res.status === "ok") {
+        await AsyncStorage.setItem("token", res.data);
+        router.replace("/home");
+      } else {
+        setError(res.data || "Invalid email or password");
+      }
+    } catch (err) {
+      setError(err.response?.data?.data || err.message);
+    }
   };
 
   return (
@@ -66,21 +52,16 @@ const Login = () => {
             style={styles.logo}
           />
 
-          <TextInput
-            style={[styles.input, { width: 300 }]}
-            placeholder="Email"
-            placeholderTextColor="#999"
+          <CustomInput
             value={email}
             onChangeText={setEmail}
+            placeholder="Email"
           />
-
-          <TextInput
-            style={[styles.input, { width: 300 }]}
-            placeholder="Password"
-            placeholderTextColor="#999"
-            secureTextEntry
+          <CustomInput
             value={password}
             onChangeText={setPassword}
+            placeholder="Password"
+            secureTextEntry
           />
 
           <Pressable
@@ -98,7 +79,7 @@ const Login = () => {
             </Pressable>
           </Link>
 
-          {error && <Text style={styles.error}>{error}</Text>}
+          <ErrorMessage message={error} />
         </View>
       </TouchableWithoutFeedback>
     </KeyboardAwareScrollView>
@@ -120,22 +101,6 @@ const styles = StyleSheet.create({
     height: 250,
     borderRadius: 125,
     marginBottom: 40,
-  },
-  title: {
-    fontSize: 24,
-    marginBottom: 30,
-    fontWeight: "bold",
-    color: "#B2CBDB",
-  },
-  input: {
-    width: "100%",
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 20,
-    fontSize: 16,
-    borderColor: "#ccc",
-    borderWidth: 1,
   },
   button: {
     backgroundColor: "#9DBDCE",
@@ -159,17 +124,5 @@ const styles = StyleSheet.create({
     color: "grey",
     fontSize: 13,
     textDecorationLine: "underline",
-  },
-  error: {
-    color: "#B00020",
-    backgroundColor: "#FDECEA",
-    borderColor: "#F5C6CB",
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 15,
-    fontSize: 14,
-    textAlign: "center",
-    width: "100%",
   },
 });
