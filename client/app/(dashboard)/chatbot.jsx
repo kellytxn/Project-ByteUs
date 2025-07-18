@@ -17,7 +17,6 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BACKEND_URL } from "../../config";
 
-const GEMINI_API_KEY = "AIzaSyD8WWkEkO_sb6oxYCcnkmPvQNAqqxyAfOw";
 const USER_AVATAR = require("../../assets/Default.png.jpeg");
 
 // Handle formatting
@@ -270,22 +269,17 @@ const Chatbot = () => {
 
     return () => clearTimeout(timer);
   }, [messages]);
+
   const fetchGeminiResponse = async (prompt) => {
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-          }),
-        }
-      );
+      const response = await fetch(`${BACKEND_URL}/generate-gemini`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
 
       const data = await response.json();
-      const content = data?.candidates?.[0]?.content;
-      return content?.parts?.[0]?.text || "No response";
+      return data.response || "No response";
     } catch (error) {
       console.error("Error:", error);
       return "Error occurred while fetching response";
