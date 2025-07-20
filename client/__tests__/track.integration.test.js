@@ -5,13 +5,17 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NavigationContainer } from "@react-navigation/native";
 
-// Mock all dependencies
-jest.mock("axios");
+// Mock AsyncStorage methods
 jest.mock("@react-native-async-storage/async-storage", () => ({
   getItem: jest.fn(),
   setItem: jest.fn(),
   removeItem: jest.fn(),
 }));
+
+// Mock axios for all network calls
+jest.mock("axios");
+
+// Mock UI components that require native dependencies or heavy rendering
 jest.mock("react-native-chart-kit", () => ({
   PieChart: () => null,
   LineChart: () => null,
@@ -20,14 +24,21 @@ jest.mock("react-native-progress", () => ({
   Circle: () => null,
 }));
 
-const renderWithNavigation = (ui) =>
-  render(<NavigationContainer>{ui}</NavigationContainer>);
-
+// Silence console logs in tests to reduce noise
 beforeAll(() => {
   jest.spyOn(console, "log").mockImplementation(() => {});
   jest.spyOn(console, "error").mockImplementation(() => {});
 });
-describe("Track Component Unit Tests", () => {
+afterAll(() => {
+  console.log.mockRestore();
+  console.error.mockRestore();
+});
+
+// Helper to wrap your component with NavigationContainer for navigation context
+const renderWithNavigation = (ui) =>
+  render(<NavigationContainer>{ui}</NavigationContainer>);
+
+describe("Track Component Integration", () => {
   const mockUserData = {
     email: "test@example.com",
     name: "Test User",
@@ -36,7 +47,6 @@ describe("Track Component Unit Tests", () => {
   const mockModules = [
     {
       _id: "1",
-      $id: "1",
       code: "CS1010",
       name: "Programming Methodology",
       category: "Core",
@@ -49,7 +59,6 @@ describe("Track Component Unit Tests", () => {
     },
     {
       _id: "2",
-      $id: "2",
       code: "GESS1000",
       name: "General Education",
       category: "GE",
@@ -65,6 +74,7 @@ describe("Track Component Unit Tests", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
+    // AsyncStorage mocks for token and graduation MCs
     AsyncStorage.getItem.mockImplementation((key) => {
       if (key === "token") return Promise.resolve("test-token");
       if (key === "mcsToGraduate_test@example.com")
@@ -72,6 +82,7 @@ describe("Track Component Unit Tests", () => {
       return Promise.resolve(null);
     });
 
+    // Mock API POST calls for userData, getModules, and module CRUD
     axios.post.mockImplementation((url) => {
       if (url.includes("/userData")) {
         return Promise.resolve({ data: { status: "ok", data: mockUserData } });
@@ -82,9 +93,16 @@ describe("Track Component Unit Tests", () => {
       if (url.includes("/createModule")) {
         return Promise.resolve({ data: { status: "ok", id: "3" } });
       }
+      if (url.includes("/updateModule")) {
+        return Promise.resolve({ data: { status: "ok" } });
+      }
+      if (url.includes("/deleteModule")) {
+        return Promise.resolve({ data: { status: "ok" } });
+      }
       return Promise.reject(new Error("Unknown URL"));
     });
 
+    // Mock GET call for NUSMods API module data
     axios.get.mockImplementation((url) => {
       if (url.includes("api.nusmods.com")) {
         return Promise.resolve({
@@ -99,24 +117,18 @@ describe("Track Component Unit Tests", () => {
     });
   });
 
-  it("renders loading indicator initially", async () => {
+  it("shows loading indicator initially", async () => {
     const { getByTestId } = renderWithNavigation(<Track />);
-
-    // The loading indicator should appear while fetching data
     await act(async () => {
       expect(getByTestId("activity-indicator")).toBeTruthy();
     });
   });
 
-  it("shows module creation form when '+' pressed and hides on '-'", async () => {
+  it("toggles the module creation form", async () => {
     const { getByText, queryByPlaceholderText } = renderWithNavigation(
       <Track />
     );
-
-    // Wait for initial data fetch
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 100));
-    });
+    await act(async () => new Promise((r) => setTimeout(r, 100)));
 
     fireEvent.press(getByText("+"));
     expect(getByText("-")).toBeTruthy();
@@ -126,12 +138,9 @@ describe("Track Component Unit Tests", () => {
     expect(queryByPlaceholderText("Enter module code")).toBeNull();
   });
 
-  it("calls API to create a module when form submitted", async () => {
+  it("creates a new module and calls API", async () => {
     const { getByText, getByPlaceholderText } = renderWithNavigation(<Track />);
-
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 100));
-    });
+    await act(async () => new Promise((r) => setTimeout(r, 100)));
 
     fireEvent.press(getByText("+"));
 
@@ -162,22 +171,16 @@ describe("Track Component Unit Tests", () => {
     });
   });
 
-  it("auto-fills module details on code input", async () => {
+  it("auto-fills module details when code is entered", async () => {
     const { getByText, getByPlaceholderText } = renderWithNavigation(<Track />);
-
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 100));
-    });
+    await act(async () => new Promise((r) => setTimeout(r, 100)));
 
     fireEvent.press(getByText("+"));
 
-    const codeInput = getByPlaceholderText("Enter module code");
-    fireEvent.changeText(codeInput, "CS2030");
+    fireEvent.changeText(getByPlaceholderText("Enter module code"), "CS2030");
 
-    // wait for debounce and API call
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 600));
-    });
+    // Wait for API debounce / effect
+    await act(async () => new Promise((r) => setTimeout(r, 600)));
 
     expect(getByPlaceholderText("Enter module name").props.value).toBe(
       "Programming Methodology II"
@@ -185,12 +188,9 @@ describe("Track Component Unit Tests", () => {
     expect(getByPlaceholderText("Enter the MCs").props.value).toBe("4");
   });
 
-  it("toggles module category expansion", async () => {
+  it("expands and collapses categories to show/hide modules", async () => {
     const { getByText, queryByText } = renderWithNavigation(<Track />);
-
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 100));
-    });
+    await act(async () => new Promise((r) => setTimeout(r, 100)));
 
     fireEvent.press(getByText("Core"));
     expect(queryByText("Programming Methodology")).toBeTruthy();
@@ -199,12 +199,9 @@ describe("Track Component Unit Tests", () => {
     expect(queryByText("Programming Methodology")).toBeNull();
   });
 
-  it("displays MCs progress correctly", async () => {
+  it("displays completed MCs progress", async () => {
     const { getByText } = renderWithNavigation(<Track />);
-
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 100));
-    });
+    await act(async () => new Promise((r) => setTimeout(r, 100)));
 
     expect(getByText("4/8 MCs")).toBeTruthy();
     expect(getByText("completed")).toBeTruthy();

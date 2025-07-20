@@ -1,59 +1,95 @@
 import React from "react";
-import { render, waitFor } from "@testing-library/react-native";
+import { render, waitFor, fireEvent } from "@testing-library/react-native";
 import Home from "../app/index";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Mock all dependencies
-jest.mock("expo-router", () => ({
-  useRouter: () => ({
-    replace: jest.fn(),
-    push: jest.fn(),
-  }),
-}));
+// Mock dependencies at the top level
 jest.mock("@react-native-async-storage/async-storage", () => ({
   getItem: jest.fn(),
 }));
 
-describe("Landing component", () => {
+const mockReplace = jest.fn();
+const mockPush = jest.fn();
+jest.mock("expo-router", () => ({
+  useRouter: () => ({
+    replace: mockReplace,
+    push: mockPush,
+  }),
+}));
+
+// Mock console.log to clean up test output
+jest.spyOn(console, "log").mockImplementation(() => {});
+jest.spyOn(console, "error").mockImplementation(() => {});
+
+describe("Home/Landing Component - Unit Tests", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  it("shows loading indicator initially", () => {
-    AsyncStorage.getItem.mockReturnValue(new Promise(() => {}));
-
-    const { getByText, getByTestId } = render(<Home />);
-
-    expect(getByText("Loading...")).toBeTruthy();
-  });
-
-  it("shows Login and Register buttons when no token", async () => {
+    // Default mock - no token
     AsyncStorage.getItem.mockResolvedValue(null);
+  });
 
-    const { getByText, queryByText } = render(<Home />);
+  describe("Initial Loading State", () => {
+    it("displays loading indicator while checking auth status", () => {
+      // Simulate pending promise
+      AsyncStorage.getItem.mockReturnValue(new Promise(() => {}));
 
-    await waitFor(() => {
-      expect(queryByText("Loading...")).toBeNull();
-      expect(getByText("Login")).toBeTruthy();
-      expect(getByText("Register")).toBeTruthy();
+      const { getByText } = render(<Home />);
+      expect(getByText("Loading...")).toBeTruthy();
     });
   });
 
-  it("calls router.replace('/home') when token exists", async () => {
-    const mockReplace = jest.fn();
-    jest.mock("expo-router", () => ({
-      useRouter: () => ({
-        replace: mockReplace,
-        push: jest.fn(),
-      }),
-    }));
+  describe("Unauthenticated State", () => {
+    it("shows login and register buttons when no token exists", async () => {
+      const { getByText, queryByText } = render(<Home />);
 
-    AsyncStorage.getItem.mockResolvedValue("mock-token");
+      await waitFor(() => {
+        expect(queryByText("Loading...")).toBeNull();
+        expect(getByText("Login")).toBeTruthy();
+        expect(getByText("Register")).toBeTruthy();
+      });
+    });
 
-    render(<Home />);
+    it("navigates to login when login button pressed", async () => {
+      const { getByText } = render(<Home />);
 
-    await waitFor(() => {
-      expect(AsyncStorage.getItem).toHaveBeenCalledWith("token");
+      await waitFor(() => {
+        fireEvent.press(getByText("Login"));
+      });
+
+      expect(mockPush).toHaveBeenCalledWith("/login");
+    });
+
+    it("navigates to register when register button pressed", async () => {
+      const { getByText } = render(<Home />);
+
+      await waitFor(() => {
+        fireEvent.press(getByText("Register"));
+      });
+
+      expect(mockPush).toHaveBeenCalledWith("/register");
+    });
+  });
+
+  describe("Authenticated State", () => {
+    it("redirects to home screen when token exists", async () => {
+      AsyncStorage.getItem.mockResolvedValue("valid-token");
+
+      render(<Home />);
+
+      await waitFor(() => {
+        expect(AsyncStorage.getItem).toHaveBeenCalledWith("token");
+        expect(mockReplace).toHaveBeenCalledWith("/home");
+      });
+    });
+
+    it("handles AsyncStorage error gracefully", async () => {
+      AsyncStorage.getItem.mockRejectedValue(new Error("Storage error"));
+
+      const { getByText } = render(<Home />);
+
+      await waitFor(() => {
+        expect(getByText("Login")).toBeTruthy(); // Falls back to unauthenticated UI
+      });
     });
   });
 });
