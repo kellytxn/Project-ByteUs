@@ -58,7 +58,7 @@ exports.login = async (req, res) => {
   if (!isPasswordValid) {
     return res
       .status(400)
-      .json({ status: "error", data: "Invalid email or password" });
+      .json({ status: "error", data: "Invalid password" });
   }
 
   const token = jwt.sign({ email: user.email }, JWT_SECRET);
@@ -84,7 +84,6 @@ exports.userData = async (req, res) => {
 
     return res.status(200).json({ status: "ok", data });
   } catch (error) {
-    console.error("User data fetch error:", error);
     return res.status(401).json({ status: "error", data: "Invalid token" });
   }
 };
