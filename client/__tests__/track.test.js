@@ -4,6 +4,7 @@ import Track from "../app/(dashboard)/track";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NavigationContainer } from "@react-navigation/native";
+import { Alert } from "react-native";
 
 // Mock all dependencies
 jest.mock("axios");
@@ -19,6 +20,7 @@ jest.mock("react-native-chart-kit", () => ({
 jest.mock("react-native-progress", () => ({
   Circle: () => null,
 }));
+jest.spyOn(Alert, "alert");
 
 const renderWithNavigation = (ui) =>
   render(<NavigationContainer>{ui}</NavigationContainer>);
@@ -224,5 +226,257 @@ describe("track", () => {
     });
 
     expect(getByText("GPA Calculator")).toBeTruthy();
+  });
+
+  describe("edge cases", () => {
+    it("shows alert when form is incomplete", async () => {
+      const alertMock = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+      const { getByText } = renderWithNavigation(<Track />);
+
+      await act(async () => new Promise((r) => setTimeout(r, 100)));
+
+      fireEvent.press(getByText("+"));
+      fireEvent.press(getByText("Create"));
+
+      expect(alertMock).toHaveBeenCalledWith("Please fill all fields");
+      alertMock.mockRestore();
+    });
+
+    it("shows alert when units are not a number", async () => {
+      const alertMock = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+      const { getByText, getByPlaceholderText } = renderWithNavigation(
+        <Track />
+      );
+
+      await act(async () => new Promise((r) => setTimeout(r, 100)));
+      fireEvent.press(getByText("+"));
+
+      fireEvent.changeText(getByPlaceholderText("Enter module code"), "CS2030");
+      fireEvent.changeText(
+        getByPlaceholderText("Enter module name"),
+        "Programming Methodology II"
+      );
+      fireEvent.changeText(getByPlaceholderText("Enter category"), "Core");
+      fireEvent.changeText(getByPlaceholderText("Enter the MCs"), "four");
+
+      fireEvent.press(getByText("Create"));
+
+      expect(alertMock).toHaveBeenCalledWith("Units must be a number");
+      alertMock.mockRestore();
+    });
+
+    it("shows alert when completed module has no grade", async () => {
+      const alertMock = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+      const { getByText, getByPlaceholderText, getByTestId } =
+        renderWithNavigation(<Track />);
+
+      await act(async () => new Promise((r) => setTimeout(r, 100)));
+      fireEvent.press(getByText("+"));
+
+      fireEvent.changeText(getByPlaceholderText("Enter module code"), "CS2040");
+      fireEvent.changeText(
+        getByPlaceholderText("Enter module name"),
+        "Data Structures"
+      );
+      fireEvent.changeText(getByPlaceholderText("Enter category"), "Core");
+      fireEvent.changeText(getByPlaceholderText("Enter the MCs"), "4");
+
+      fireEvent(getByTestId("completed-switch"), "valueChange", true);
+
+      fireEvent.press(getByText("Create"));
+
+      expect(alertMock).toHaveBeenCalledWith(
+        "Please enter the final grade for completed module"
+      );
+      alertMock.mockRestore();
+    });
+
+    it("shows alert for invalid grade", async () => {
+      const alertMock = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+      const { getByText, getByPlaceholderText, getByTestId } =
+        renderWithNavigation(<Track />);
+
+      await act(async () => new Promise((r) => setTimeout(r, 100)));
+      fireEvent.press(getByText("+"));
+
+      fireEvent.changeText(getByPlaceholderText("Enter module code"), "CS2040");
+      fireEvent.changeText(
+        getByPlaceholderText("Enter module name"),
+        "Data Structures"
+      );
+      fireEvent.changeText(getByPlaceholderText("Enter category"), "Core");
+      fireEvent.changeText(getByPlaceholderText("Enter the MCs"), "4");
+
+      fireEvent(getByTestId("completed-switch"), "valueChange", true);
+
+      fireEvent.changeText(getByPlaceholderText("Enter your grade"), "Z");
+
+      fireEvent.changeText(
+        getByPlaceholderText("Enter the academic year (e.g., 1 for Year 1)"),
+        "1"
+      );
+      fireEvent.changeText(
+        getByPlaceholderText("Enter the semester (e.g., 1 for Semester 1)"),
+        "1"
+      );
+
+      fireEvent.press(getByText("Create"));
+
+      expect(alertMock).toHaveBeenCalledWith(
+        "Invalid Grade",
+        "Please enter one of the following grades: A+, A, A-, B+, B, B-, C+, C, D+, D, F, CS, CU"
+      );
+      alertMock.mockRestore();
+    });
+
+    it("shows alert when year is missing for completed module", async () => {
+      const alertMock = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+      const { getByText, getByPlaceholderText, getByTestId } =
+        renderWithNavigation(<Track />);
+
+      await act(async () => new Promise((r) => setTimeout(r, 100)));
+      fireEvent.press(getByText("+"));
+
+      fireEvent.changeText(getByPlaceholderText("Enter module code"), "CS2040");
+      fireEvent.changeText(
+        getByPlaceholderText("Enter module name"),
+        "Data Structures"
+      );
+      fireEvent.changeText(getByPlaceholderText("Enter category"), "Core");
+      fireEvent.changeText(getByPlaceholderText("Enter the MCs"), "4");
+      fireEvent(getByTestId("completed-switch"), "valueChange", true);
+      fireEvent.changeText(getByPlaceholderText("Enter your grade"), "A");
+      fireEvent.changeText(
+        getByPlaceholderText("Enter the semester (e.g., 1 for Semester 1)"),
+        "1"
+      );
+
+      fireEvent.press(getByText("Create"));
+
+      expect(alertMock).toHaveBeenCalledWith(
+        "Please enter the year you completed the module"
+      );
+      alertMock.mockRestore();
+    });
+
+    it("shows alert when year is not a number", async () => {
+      const alertMock = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+      const { getByText, getByPlaceholderText, getByTestId } =
+        renderWithNavigation(<Track />);
+
+      await act(async () => new Promise((r) => setTimeout(r, 100)));
+      fireEvent.press(getByText("+"));
+
+      fireEvent.changeText(getByPlaceholderText("Enter module code"), "CS2040");
+      fireEvent.changeText(
+        getByPlaceholderText("Enter module name"),
+        "Data Structures"
+      );
+      fireEvent.changeText(getByPlaceholderText("Enter category"), "Core");
+      fireEvent.changeText(getByPlaceholderText("Enter the MCs"), "4");
+      fireEvent(getByTestId("completed-switch"), "valueChange", true);
+      fireEvent.changeText(getByPlaceholderText("Enter your grade"), "A");
+      fireEvent.changeText(
+        getByPlaceholderText("Enter the academic year (e.g., 1 for Year 1)"),
+        "first"
+      );
+      fireEvent.changeText(
+        getByPlaceholderText("Enter the semester (e.g., 1 for Semester 1)"),
+        "1"
+      );
+
+      fireEvent.press(getByText("Create"));
+
+      expect(alertMock).toHaveBeenCalledWith("Year must be a number");
+      alertMock.mockRestore();
+    });
+
+    it("shows alert when semester is missing for completed module", async () => {
+      const alertMock = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+      const { getByText, getByPlaceholderText, getByTestId } =
+        renderWithNavigation(<Track />);
+
+      await act(async () => new Promise((r) => setTimeout(r, 100)));
+      fireEvent.press(getByText("+"));
+
+      fireEvent.changeText(getByPlaceholderText("Enter module code"), "CS2040");
+      fireEvent.changeText(
+        getByPlaceholderText("Enter module name"),
+        "Data Structures"
+      );
+      fireEvent.changeText(getByPlaceholderText("Enter category"), "Core");
+      fireEvent.changeText(getByPlaceholderText("Enter the MCs"), "4");
+      fireEvent(getByTestId("completed-switch"), "valueChange", true);
+      fireEvent.changeText(getByPlaceholderText("Enter your grade"), "A");
+      fireEvent.changeText(
+        getByPlaceholderText("Enter the academic year (e.g., 1 for Year 1)"),
+        "1"
+      );
+
+      fireEvent.press(getByText("Create"));
+
+      expect(alertMock).toHaveBeenCalledWith(
+        "Please enter the semester you completed the module"
+      );
+      alertMock.mockRestore();
+    });
+
+    it("shows alert when semester is not a number", async () => {
+      const alertMock = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+      const { getByText, getByPlaceholderText, getByTestId } =
+        renderWithNavigation(<Track />);
+
+      await act(async () => new Promise((r) => setTimeout(r, 100)));
+      fireEvent.press(getByText("+"));
+
+      fireEvent.changeText(getByPlaceholderText("Enter module code"), "CS2040");
+      fireEvent.changeText(
+        getByPlaceholderText("Enter module name"),
+        "Data Structures"
+      );
+      fireEvent.changeText(getByPlaceholderText("Enter category"), "Core");
+      fireEvent.changeText(getByPlaceholderText("Enter the MCs"), "4");
+      fireEvent(getByTestId("completed-switch"), "valueChange", true);
+      fireEvent.changeText(getByPlaceholderText("Enter your grade"), "A");
+      fireEvent.changeText(
+        getByPlaceholderText("Enter the academic year (e.g., 1 for Year 1)"),
+        "1"
+      );
+      fireEvent.changeText(
+        getByPlaceholderText("Enter the semester (e.g., 1 for Semester 1)"),
+        "second"
+      );
+
+      fireEvent.press(getByText("Create"));
+
+      expect(alertMock).toHaveBeenCalledWith("Semester must be a number");
+      alertMock.mockRestore();
+    });
+
+    it("shows alert for duplicate module entry", async () => {
+      const alertMock = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+      const { getByText, getByPlaceholderText } = renderWithNavigation(
+        <Track />
+      );
+
+      await act(async () => new Promise((r) => setTimeout(r, 100)));
+      fireEvent.press(getByText("+"));
+
+      fireEvent.changeText(getByPlaceholderText("Enter module code"), "CS1010");
+      fireEvent.changeText(
+        getByPlaceholderText("Enter module name"),
+        "Programming Methodology"
+      );
+      fireEvent.changeText(getByPlaceholderText("Enter category"), "Core");
+      fireEvent.changeText(getByPlaceholderText("Enter the MCs"), "4");
+
+      fireEvent.press(getByText("Create"));
+
+      expect(alertMock).toHaveBeenCalledWith(
+        "Duplicate module",
+        "A module with this code already exists."
+      );
+      alertMock.mockRestore();
+    });
   });
 });

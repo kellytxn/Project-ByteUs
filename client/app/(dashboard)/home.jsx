@@ -11,6 +11,8 @@ import {
   Alert,
   FlatList,
   Modal,
+  Button,
+  TouchableOpacity,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import axios from "axios";
@@ -42,6 +44,8 @@ const Home = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedFriend, setSelectedFriend] = useState(null);
   const [selfModalVisible, setSelfModalVisible] = useState(false);
+  const [showAddFriendModal, setShowAddFriendModal] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
 
   const router = useRouter();
 
@@ -726,6 +730,7 @@ const Home = () => {
                                 </Text>
                               </View>
                               <Pressable
+                                testID="remove-friend-button"
                                 onPress={() => handleDeleteFriend(friend._id)}
                                 style={styles.deleteButton}
                               >
@@ -828,26 +833,47 @@ const Home = () => {
                       </View>
                     )}
                   </View>
+                  <Modal
+                    visible={showAddFriendModal}
+                    transparent
+                    animationType="slide"
+                  >
+                    <View style={styles.modalBox}>
+                      <View style={styles.modal}>
+                        <Text style={styles.modalHead}>Add Friend</Text>
+                        <TextInput
+                          style={styles.content}
+                          placeholder="Enter your friend's email"
+                          value={emailInput}
+                          onChangeText={setEmailInput}
+                          testID="email-input"
+                          placeholderTextColor="#888"
+                        />
+                        <View style={styles.buttonRow}>
+                          <TouchableOpacity
+                            style={styles.cancelButton}
+                            onPress={() => setShowAddFriendModal(false)}
+                          >
+                            <Text style={styles.buttonText}>Cancel</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.sendButton}
+                            onPress={() => {
+                              sendFriendRequest(emailInput);
+                              setShowAddFriendModal(false);
+                            }}
+                          >
+                            <Text style={styles.buttonText}>Send</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    </View>
+                  </Modal>
+
                   <Pressable
                     testID="add-friend-button"
                     style={styles.addFriendButton}
-                    onPress={() => {
-                      Alert.prompt(
-                        "Add Friend",
-                        "Enter your friend's email address",
-                        [
-                          {
-                            text: "Cancel",
-                            style: "cancel",
-                          },
-                          {
-                            text: "Send",
-                            onPress: (email) => sendFriendRequest(email),
-                          },
-                        ],
-                        "plain-text"
-                      );
-                    }}
+                    onPress={() => setShowAddFriendModal(true)}
                   >
                     <Ionicons name="person-add" size={20} color="white" />
                     <Text style={styles.addFriendText}>Add Friend</Text>
@@ -1243,9 +1269,11 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   friendListItemName: {
-    fontSize: 16,
+    fontSize: 15,
     color: "#555",
     fontWeight: "500",
+    flexShrink: 1,
+    flexWrap: "wrap",
   },
   requestsListContainer: {
     marginTop: 5,
@@ -1277,5 +1305,60 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  modalBox: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+  },
+  modal: {
+    width: "85%",
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 10,
+  },
+  modalHead: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+    color: "#333",
+  },
+  content: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    marginBottom: 20,
+    color: "#000",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  sendButton: {
+    backgroundColor: "#AE96C7",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  cancelButton: {
+    backgroundColor: "#ccc",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 16,
   },
 });

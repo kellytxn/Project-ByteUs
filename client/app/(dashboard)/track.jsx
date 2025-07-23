@@ -778,6 +778,7 @@ const Track = () => {
                       }}
                     >
                       <Switch
+                        testID="completed-switch"
                         value={completed}
                         onValueChange={(val) => {
                           setCompleted(val);

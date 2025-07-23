@@ -19,7 +19,7 @@ jest.mock("expo-router", () => ({
     replace: mockReplace,
   }),
 }));
-jest.spyOn(Alert, "alert");
+jest.spyOn(Alert, "alert").mockImplementation(() => {});
 
 const consoleErrorSpy = jest
   .spyOn(console, "error")
@@ -173,7 +173,7 @@ describe("home", () => {
   });
 
   describe("friends info display", () => {
-    it("displays friends information", async () => {
+    it("displays friends page", async () => {
       const { getByText, getAllByText } = renderComponent();
 
       await waitFor(() => getByText("Welcome back,"));
@@ -185,6 +185,125 @@ describe("home", () => {
         const friends = getAllByText("Friends");
         expect(friends.length).toBeGreaterThanOrEqual(2);
         expect(getByText("Pending Requests")).toBeTruthy();
+      });
+    });
+
+    it("display friends info", async () => {
+      const { getByText, getAllByText } = renderComponent();
+      await waitFor(() => getByText("Welcome back,"));
+
+      fireEvent.press(getAllByText("Friends")[0]);
+
+      fireEvent.press(getAllByText("Friends")[1]);
+
+      await waitFor(() => getByText("Alice"));
+    });
+
+    it("display pending requests info", async () => {
+      const { getByText, getAllByText } = renderComponent();
+      await waitFor(() => getByText("Welcome back,"));
+
+      fireEvent.press(getAllByText("Friends")[0]);
+
+      fireEvent.press(getByText("Pending Requests"));
+
+      await waitFor(() => getByText("No pending requests"));
+    });
+  });
+
+  describe("add friends", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    const setup = async () => {
+      const utils = renderComponent();
+      await waitFor(() => utils.getByText("Welcome back,"));
+
+      fireEvent.press(utils.getByText("Friends"));
+
+      fireEvent.press(utils.getByText("Add Friend"));
+
+      return utils;
+    };
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("Send friend request to yourself", async () => {
+      axios.post.mockResolvedValueOnce({
+        data: { message: "Cannot send friend request to yourself" },
+      });
+
+      const { getByPlaceholderText, getByText } = await setup();
+      fireEvent.changeText(
+        getByPlaceholderText("Enter your friend's email"),
+        "self@example.com"
+      );
+      fireEvent.press(getByText("Send"));
+
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalled();
+        expect(Alert.alert.mock.calls[0][0]).toBe("Success");
+      });
+    });
+
+    it("Send friend request to existing friend", async () => {
+      axios.post.mockResolvedValueOnce({
+        data: { message: "You are already friends with this user" },
+      });
+
+      const { getByPlaceholderText, getByText } = await setup();
+      fireEvent.changeText(
+        getByPlaceholderText("Enter your friend's email"),
+        "friend@example.com"
+      );
+      fireEvent.press(getByText("Send"));
+
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalled();
+        expect(Alert.alert.mock.calls[0][0]).toBe("Success");
+      });
+    });
+
+    it("Send duplicate friend request (already pending)", async () => {
+      axios.post.mockResolvedValueOnce({
+        data: { message: "Friend request already pending" },
+      });
+
+      const { getByPlaceholderText, getByText } = await setup();
+      fireEvent.changeText(
+        getByPlaceholderText("Enter your friend's email"),
+        "pending@example.com"
+      );
+      fireEvent.press(getByText("Send"));
+
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalled();
+        expect(Alert.alert.mock.calls[0][0]).toBe("Success");
+      });
+    });
+
+    it("Send valid friend request", async () => {
+      axios.post.mockResolvedValueOnce({
+        data: {
+          message: "Friend request sent successfully",
+        },
+      });
+
+      const { getByPlaceholderText, getByText } = await setup();
+      fireEvent.changeText(
+        getByPlaceholderText("Enter your friend's email"),
+        "valid@example.com"
+      );
+      fireEvent.press(getByText("Send"));
+
+      console.log(Alert.alert.mock.calls);
+
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalled();
+        expect(Alert.alert.mock.calls[0][0]).toBe("Success");
       });
     });
   });
