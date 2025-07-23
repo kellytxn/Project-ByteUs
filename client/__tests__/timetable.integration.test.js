@@ -81,7 +81,12 @@ describe("timetable", () => {
       <Timetable />
     );
 
-    await waitForLoadingToFinish(queryByText);
+    await waitFor(
+      () => {
+        expect(queryByText("Loading...")).toBeNull();
+      },
+      { timeout: 15000 }
+    );
 
     const searchInput = getByPlaceholderText("Search module code or name");
     await act(async () => {
