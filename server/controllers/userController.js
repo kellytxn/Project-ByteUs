@@ -125,7 +125,6 @@ exports.updateUserData = async (req, res) => {
       data: updatedUser,
     });
   } catch (error) {
-    console.error("Update user error:", error);
     if (error.name === "JsonWebTokenError") {
       return res.status(401).json({ status: "error", data: "Invalid token" });
     }

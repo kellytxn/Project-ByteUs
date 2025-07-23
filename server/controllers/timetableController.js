@@ -48,7 +48,6 @@ exports.timetableGen = async (req, res) => {
       data: bestTimetable,
     });
   } catch (error) {
-    console.error("Timetable generation error:", error);
     if (error.name === "JsonWebTokenError") {
       return res.status(401).json({ status: "error", data: "Invalid token" });
     }
@@ -82,7 +81,6 @@ exports.timetableSnapshot = async (req, res) => {
       data: "Timetable snapshot saved successfully",
     });
   } catch (error) {
-    console.error("Timetable snapshot save error:", error);
     if (error.name === "JsonWebTokenError") {
       return res.status(401).json({ status: "error", data: "Invalid token" });
     }
