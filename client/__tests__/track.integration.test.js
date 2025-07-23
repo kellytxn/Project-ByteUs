@@ -11,11 +11,7 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
   setItem: jest.fn(),
   removeItem: jest.fn(),
 }));
-
-// Mock axios for all network calls
 jest.mock("axios");
-
-// Mock UI components that require native dependencies or heavy rendering
 jest.mock("react-native-chart-kit", () => ({
   PieChart: () => null,
   LineChart: () => null,
@@ -24,7 +20,6 @@ jest.mock("react-native-progress", () => ({
   Circle: () => null,
 }));
 
-// Silence console logs in tests to reduce noise
 beforeAll(() => {
   jest.spyOn(console, "log").mockImplementation(() => {});
   jest.spyOn(console, "error").mockImplementation(() => {});
@@ -34,11 +29,10 @@ afterAll(() => {
   console.error.mockRestore();
 });
 
-// Helper to wrap your component with NavigationContainer for navigation context
 const renderWithNavigation = (ui) =>
   render(<NavigationContainer>{ui}</NavigationContainer>);
 
-describe("Track Component Integration", () => {
+describe("track", () => {
   const mockUserData = {
     email: "test@example.com",
     name: "Test User",
@@ -74,7 +68,6 @@ describe("Track Component Integration", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // AsyncStorage mocks for token and graduation MCs
     AsyncStorage.getItem.mockImplementation((key) => {
       if (key === "token") return Promise.resolve("test-token");
       if (key === "mcsToGraduate_test@example.com")
@@ -82,7 +75,6 @@ describe("Track Component Integration", () => {
       return Promise.resolve(null);
     });
 
-    // Mock API POST calls for userData, getModules, and module CRUD
     axios.post.mockImplementation((url) => {
       if (url.includes("/userData")) {
         return Promise.resolve({ data: { status: "ok", data: mockUserData } });
@@ -102,7 +94,6 @@ describe("Track Component Integration", () => {
       return Promise.reject(new Error("Unknown URL"));
     });
 
-    // Mock GET call for NUSMods API module data
     axios.get.mockImplementation((url) => {
       if (url.includes("api.nusmods.com")) {
         return Promise.resolve({
@@ -179,7 +170,6 @@ describe("Track Component Integration", () => {
 
     fireEvent.changeText(getByPlaceholderText("Enter module code"), "CS2030");
 
-    // Wait for API debounce / effect
     await act(async () => new Promise((r) => setTimeout(r, 600)));
 
     expect(getByPlaceholderText("Enter module name").props.value).toBe(

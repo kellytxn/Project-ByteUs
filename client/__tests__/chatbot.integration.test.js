@@ -38,7 +38,7 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }));
 
-describe("Chatbot Integration Test", () => {
+describe("chatbot", () => {
   beforeEach(() => {
     getToken.mockResolvedValue(
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImtlbGx5dHR0YW5AZ21haWwuY29tIiwiaWF0IjoxNzUyODI4MDczfQ.GNUIDQScVfXcoNFxeG18rCFQUoNjJ1puMDUfOQhYMXY"

@@ -12,7 +12,6 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
   setItem: jest.fn(),
   removeItem: jest.fn(),
 }));
-
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({
@@ -20,12 +19,11 @@ jest.mock("expo-router", () => ({
   }),
 }));
 
-// Mock console.error to clean up test output
 const consoleErrorSpy = jest
   .spyOn(console, "error")
   .mockImplementation(() => {});
 
-describe("Home Component - Unit Tests", () => {
+describe("home", () => {
   const mockUserData = {
     name: "Kelly",
     course: "CS",
@@ -33,13 +31,28 @@ describe("Home Component - Unit Tests", () => {
     semester: 1,
     email: "kelly@example.com",
     modules: [],
+    friends: ["friend1_id"], // Simulate friend IDs
   };
+
+  const mockFriendsData = [
+    {
+      _id: "friend1_id",
+      name: "Alice",
+      profilePic: null,
+    },
+  ];
 
   beforeEach(() => {
     jest.clearAllMocks();
     AsyncStorage.getItem.mockResolvedValue("mock-token");
-    axios.post.mockResolvedValue({
-      data: { data: mockUserData },
+    axios.post.mockImplementation((url) => {
+      if (url.endsWith("/userData")) {
+        return Promise.resolve({ data: { data: mockUserData } });
+      }
+      if (url.endsWith("/getFriendsDetails")) {
+        return Promise.resolve({ data: { friends: mockFriendsData } });
+      }
+      return Promise.resolve({ data: {} });
     });
   });
 
@@ -55,7 +68,7 @@ describe("Home Component - Unit Tests", () => {
     );
   };
 
-  describe("Initial State", () => {
+  describe("initial state", () => {
     it("fetches token from AsyncStorage on mount", async () => {
       renderComponent();
       await waitFor(() => {
@@ -64,7 +77,7 @@ describe("Home Component - Unit Tests", () => {
     });
   });
 
-  describe("Successful Data Fetch", () => {
+  describe("successful data fetch", () => {
     it("displays welcome message with user name", async () => {
       const { getByText } = renderComponent();
 
@@ -86,13 +99,52 @@ describe("Home Component - Unit Tests", () => {
     });
   });
 
-  describe("Error Handling", () => {
+  describe("edge cases", () => {
     it("handles missing token scenario", async () => {
       AsyncStorage.getItem.mockResolvedValueOnce(null);
       const { queryByText } = renderComponent();
 
       await waitFor(() => {
         expect(queryByText("Welcome back,")).toBeNull();
+      });
+    });
+  });
+
+  describe("profile and friends info display", () => {
+    it("displays profile information", async () => {
+      const { getByText, queryByText, getByTestId, getAllByText } =
+        renderComponent();
+
+      await waitFor(() => getByText("Welcome back,"));
+
+      expect(getByText("Kelly")).toBeTruthy();
+
+      expect(getByText("Course:")).toBeTruthy();
+      expect(getByText("CS")).toBeTruthy();
+
+      expect(getByText("Year:")).toBeTruthy();
+
+      expect(getByText("Semester:")).toBeTruthy();
+
+      const ones = getAllByText("1");
+      expect(ones.length).toBeGreaterThanOrEqual(2);
+
+      expect(getByText("MCs Required:")).toBeTruthy();
+      expect(getByText("N/A")).toBeTruthy();
+    });
+
+    it("displays friends information", async () => {
+      const { getByText, getAllByText } = renderComponent();
+
+      await waitFor(() => getByText("Welcome back,"));
+
+      const tabs = getAllByText("Friends");
+      fireEvent.press(tabs[0]);
+
+      await waitFor(() => {
+        const friends = getAllByText("Friends");
+        expect(friends.length).toBeGreaterThanOrEqual(2);
+        expect(getByText("Pending Requests")).toBeTruthy();
       });
     });
   });

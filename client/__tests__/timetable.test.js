@@ -98,12 +98,63 @@ describe("Timetable Component", () => {
     expect(getByText("CS2030S")).toBeTruthy();
   });
 
+  it("renders exam component for selected modules", async () => {
+    const { getByPlaceholderText, findByText, getByText, queryByText } = render(
+      <Timetable />
+    );
+
+    await waitFor(() => expect(queryByText("Loading...")).toBeNull(), {
+      timeout: 5000,
+    });
+
+    const searchInput = getByPlaceholderText("Search module code or name");
+
+    await act(async () => {
+      fireEvent.changeText(searchInput, "CS2030S");
+      await new Promise((r) => setTimeout(r, 100));
+    });
+
+    const moduleItem = await findByText("CS2030S");
+    await act(async () => {
+      fireEvent.press(moduleItem);
+    });
+
+    axios.get.mockImplementation((url) => {
+      if (url.includes("CS2030S")) {
+        return Promise.resolve({
+          data: {
+            moduleCredit: 4,
+            semesterData: [
+              {
+                semester: 1,
+                examDate: "2025-11-25T09:00:00.000Z",
+                timetable: [],
+              },
+            ],
+          },
+        });
+      }
+      return Promise.reject(new Error("Module not found"));
+    });
+
+    await waitFor(() => {
+      expect(getByText(/CS2030S/)).toBeTruthy();
+    });
+
+    expect(getByText(/Exam/i)).toBeTruthy();
+  });
+
   it("should generate timetable with selected modules", async () => {
     const { getByPlaceholderText, findByText, getByText, queryByText } = render(
       <Timetable />
     );
 
-    await waitForLoading(queryByText);
+    await waitFor(
+      () => {
+        expect(queryByText("Loading...")).toBeNull();
+      },
+      { timeout: 15000 }
+    );
 
     const searchInput = getByPlaceholderText("Search module code or name");
     await act(async () => {
@@ -139,5 +190,21 @@ describe("Timetable Component", () => {
       expect(getByText("Mon")).toBeTruthy();
       expect(getByText("CS2030S")).toBeTruthy();
     });
+  });
+
+  it("renders preference texts", async () => {
+    const { getByText, queryByText } = render(<Timetable />);
+
+    await waitFor(() => expect(queryByText("Loading...")).toBeNull(), {
+      timeout: 5000,
+    });
+
+    expect(getByText("No classes on Monday")).toBeTruthy();
+    expect(getByText("No classes on Tuesday")).toBeTruthy();
+    expect(getByText("No classes on Wednesday")).toBeTruthy();
+    expect(getByText("No classes on Thursday")).toBeTruthy();
+    expect(getByText("No classes on Friday")).toBeTruthy();
+    expect(getByText("Prefer classes ending before 2pm")).toBeTruthy();
+    expect(getByText("Prefer classes starting after 10am")).toBeTruthy();
   });
 });

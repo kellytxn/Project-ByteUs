@@ -18,7 +18,7 @@ jest.mock("expo-router", () => ({
   }),
 }));
 
-describe("Home Component", () => {
+describe("home", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 

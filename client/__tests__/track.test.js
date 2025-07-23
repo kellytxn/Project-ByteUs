@@ -27,7 +27,8 @@ beforeAll(() => {
   jest.spyOn(console, "log").mockImplementation(() => {});
   jest.spyOn(console, "error").mockImplementation(() => {});
 });
-describe("Track Component Unit Tests", () => {
+
+describe("track", () => {
   const mockUserData = {
     email: "test@example.com",
     name: "Test User",
@@ -102,7 +103,6 @@ describe("Track Component Unit Tests", () => {
   it("renders loading indicator initially", async () => {
     const { getByTestId } = renderWithNavigation(<Track />);
 
-    // The loading indicator should appear while fetching data
     await act(async () => {
       expect(getByTestId("activity-indicator")).toBeTruthy();
     });
@@ -113,17 +113,24 @@ describe("Track Component Unit Tests", () => {
       <Track />
     );
 
-    // Wait for initial data fetch
     await act(async () => {
       await new Promise((r) => setTimeout(r, 100));
     });
 
     fireEvent.press(getByText("+"));
     expect(getByText("-")).toBeTruthy();
+
     expect(queryByPlaceholderText("Enter module code")).toBeTruthy();
+    expect(queryByPlaceholderText("Enter module name")).toBeTruthy();
+    expect(queryByPlaceholderText("Enter the MCs")).toBeTruthy();
+    expect(queryByPlaceholderText("Enter category")).toBeTruthy();
 
     fireEvent.press(getByText("-"));
+
     expect(queryByPlaceholderText("Enter module code")).toBeNull();
+    expect(queryByPlaceholderText("Enter module name")).toBeNull();
+    expect(queryByPlaceholderText("Enter the MCs")).toBeNull();
+    expect(queryByPlaceholderText("Enter catgeory")).toBeNull();
   });
 
   it("calls API to create a module when form submitted", async () => {
@@ -174,7 +181,6 @@ describe("Track Component Unit Tests", () => {
     const codeInput = getByPlaceholderText("Enter module code");
     fireEvent.changeText(codeInput, "CS2030");
 
-    // wait for debounce and API call
     await act(async () => {
       await new Promise((r) => setTimeout(r, 600));
     });
@@ -208,5 +214,15 @@ describe("Track Component Unit Tests", () => {
 
     expect(getByText("4/8 MCs")).toBeTruthy();
     expect(getByText("completed")).toBeTruthy();
+  });
+
+  it("displays GPA calculator when there are completed modules", async () => {
+    const { getByText, queryByText } = renderWithNavigation(<Track />);
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 100));
+    });
+
+    expect(getByText("GPA Calculator")).toBeTruthy();
   });
 });

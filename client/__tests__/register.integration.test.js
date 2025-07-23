@@ -9,7 +9,6 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
   setItem: jest.fn(() => Promise.resolve()),
 }));
 jest.spyOn(Alert, "alert").mockImplementation(() => {});
-
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({
@@ -18,7 +17,7 @@ jest.mock("expo-router", () => ({
   Link: ({ children }) => children,
 }));
 
-describe("Register Screen Integration", () => {
+describe("register", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -52,6 +51,7 @@ describe("Register Screen Integration", () => {
       expect(getByText("Register")).toBeTruthy();
     });
   });
+
   it("shows alert if required fields are empty", async () => {
     const { getByText } = render(<Register />);
 

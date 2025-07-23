@@ -2,11 +2,10 @@ import React from "react";
 import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 import Login from "../app/(auth)/login";
 
-// Mock all dependencies at the top level
+// Mock all dependencies
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
 );
-
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({
@@ -21,7 +20,7 @@ jest.mock("axios", () => ({
   ),
 }));
 
-describe("Login Screen - Unit Tests", () => {
+describe("login", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     require("axios").post.mockImplementation(() =>
@@ -29,8 +28,7 @@ describe("Login Screen - Unit Tests", () => {
     );
   });
 
-  // UI Elements Tests
-  describe("UI Rendering", () => {
+  describe("ui rendering", () => {
     it("renders email and password fields", () => {
       const { getByPlaceholderText } = render(<Login />);
       expect(getByPlaceholderText("Email")).toBeTruthy();
@@ -43,8 +41,7 @@ describe("Login Screen - Unit Tests", () => {
     });
   });
 
-  // Form Interaction Tests
-  describe("Form Interactions", () => {
+  describe("form interaction", () => {
     it("updates email field value", () => {
       const { getByPlaceholderText } = render(<Login />);
       const emailInput = getByPlaceholderText("Email");
@@ -60,8 +57,7 @@ describe("Login Screen - Unit Tests", () => {
     });
   });
 
-  // Edge Cases
-  describe("Edge Cases", () => {
+  describe("edge cases", () => {
     it("handles network errors gracefully", async () => {
       require("axios").post.mockRejectedValueOnce(new Error("Network Error"));
 
@@ -77,7 +73,7 @@ describe("Login Screen - Unit Tests", () => {
       expect(errorMessage).toBeTruthy();
     });
 
-    it("handles unexpected API response format", async () => {
+    it("handles invalid login", async () => {
       require("axios").post.mockResolvedValueOnce({
         data: { unexpected: "format" },
       });
@@ -90,7 +86,6 @@ describe("Login Screen - Unit Tests", () => {
         fireEvent.press(getByText("Login"));
       });
 
-      // Update this to match your actual error message
       const errorMessage = await findByText("Invalid email or password");
       expect(errorMessage).toBeTruthy();
     });

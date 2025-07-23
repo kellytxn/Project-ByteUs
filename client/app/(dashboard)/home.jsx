@@ -542,7 +542,10 @@ const Home = () => {
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                   <View style={styles.infoCard}>
                     <View style={styles.cardHeader}>
-                      <Pressable onPress={() => setIsEditing(!isEditing)}>
+                      <Pressable
+                        testID="edit-profile-button"
+                        onPress={() => setIsEditing(!isEditing)}
+                      >
                         <Ionicons
                           name={isEditing ? "close" : "create"}
                           size={22}

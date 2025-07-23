@@ -1,5 +1,5 @@
 import React from "react";
-import { render, act } from "@testing-library/react-native";
+import { render, act, fireEvent, waitFor } from "@testing-library/react-native";
 import Chatbot from "../app/(dashboard)/chatbot";
 import { fetchUserData } from "../services/userService";
 import { fetchGeminiResponse } from "../services/chatbotService";
@@ -21,7 +21,14 @@ jest.mock("../components/chatbot/messageBubble", () => {
   return ({ item }) => <Text testID="message-bubble">{item.text}</Text>;
 });
 jest.mock("../components/chatbot/typingIndicator", () => "TypingIndicator");
-jest.mock("../components/chatbot/promptButton", () => "PromptButton");
+jest.mock("../components/chatbot/promptButton", () => {
+  const { Text, Pressable } = require("react-native");
+  return ({ item }) => (
+    <Pressable onPress={item.action}>
+      <Text testID={`prompt-${item.id}`}>{item.text}</Text>
+    </Pressable>
+  );
+});
 jest.mock("react-native", () => {
   const RN = jest.requireActual("react-native");
 
@@ -88,5 +95,55 @@ describe("Chatbot Component", () => {
     expect(welcomeMessage.props.children).toMatch(
       /common questions you might have/
     );
+  });
+
+  it("displays all prompt buttons after welcome", async () => {
+    const { findByTestId } = render(<Chatbot />);
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(await findByTestId("prompt-1")).toBeTruthy();
+    expect(await findByTestId("prompt-2")).toBeTruthy();
+    expect(await findByTestId("prompt-3")).toBeTruthy();
+  });
+
+  it("handles prompt button presses correctly", async () => {
+    const { findByTestId, findAllByTestId } = render(<Chatbot />);
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    const prompt1 = await findByTestId("prompt-1");
+    fireEvent.press(prompt1);
+
+    await waitFor(async () => {
+      const messages = await findAllByTestId("message-bubble");
+      expect(
+        messages.some((m) => m.props.children.includes("Mock response to:"))
+      ).toBe(true);
+    });
+
+    const prompt2 = await findByTestId("prompt-2");
+    fireEvent.press(prompt2);
+
+    await waitFor(async () => {
+      const messages = await findAllByTestId("message-bubble");
+      expect(
+        messages.some((m) => m.props.children.includes("Mock response to:"))
+      ).toBe(true);
+    });
+
+    const prompt3 = await findByTestId("prompt-3");
+    fireEvent.press(prompt3);
+
+    await waitFor(async () => {
+      const messages = await findAllByTestId("message-bubble");
+      expect(
+        messages.some((m) => m.props.children.includes("Mock response to:"))
+      ).toBe(true);
+    });
   });
 });

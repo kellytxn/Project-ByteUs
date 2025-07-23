@@ -17,7 +17,7 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
   getItem: jest.fn(),
 }));
 
-describe("Home Screen Integration", () => {
+describe("landing", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });

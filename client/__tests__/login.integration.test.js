@@ -16,7 +16,7 @@ import { render, fireEvent, waitFor } from "@testing-library/react-native";
 import Login from "../app/(auth)/login";
 import axios from "axios";
 
-describe("Login Screen", () => {
+describe("login", () => {
   beforeEach(() => {
     mockReplace.mockClear();
     axios.post.mockReset();
@@ -56,7 +56,6 @@ describe("Login Screen", () => {
     fireEvent.changeText(getByPlaceholderText("Password"), "correctpass");
     fireEvent.press(getByText("Login"));
 
-    // wait for router.replace to be called
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/home"));
   });
 });

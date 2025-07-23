@@ -3,11 +3,10 @@ import { render, waitFor, fireEvent } from "@testing-library/react-native";
 import Home from "../app/index";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Mock dependencies at the top level
+// Mock dependencies
 jest.mock("@react-native-async-storage/async-storage", () => ({
   getItem: jest.fn(),
 }));
-
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
@@ -15,22 +14,20 @@ jest.mock("expo-router", () => ({
     replace: mockReplace,
     push: mockPush,
   }),
+  Link: ({ children, href }) => <>{children}</>,
 }));
 
-// Mock console.log to clean up test output
 jest.spyOn(console, "log").mockImplementation(() => {});
 jest.spyOn(console, "error").mockImplementation(() => {});
 
-describe("Home/Landing Component - Unit Tests", () => {
+describe("landing", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Default mock - no token
     AsyncStorage.getItem.mockResolvedValue(null);
   });
 
-  describe("Initial Loading State", () => {
+  describe("loading", () => {
     it("displays loading indicator while checking auth status", () => {
-      // Simulate pending promise
       AsyncStorage.getItem.mockReturnValue(new Promise(() => {}));
 
       const { getByText } = render(<Home />);
@@ -38,7 +35,7 @@ describe("Home/Landing Component - Unit Tests", () => {
     });
   });
 
-  describe("Unauthenticated State", () => {
+  describe("unauthenticated state", () => {
     it("shows login and register buttons when no token exists", async () => {
       const { getByText, queryByText } = render(<Home />);
 
@@ -70,7 +67,7 @@ describe("Home/Landing Component - Unit Tests", () => {
     });
   });
 
-  describe("Authenticated State", () => {
+  describe("authenticated state", () => {
     it("redirects to home screen when token exists", async () => {
       AsyncStorage.getItem.mockResolvedValue("valid-token");
 
@@ -88,7 +85,7 @@ describe("Home/Landing Component - Unit Tests", () => {
       const { getByText } = render(<Home />);
 
       await waitFor(() => {
-        expect(getByText("Login")).toBeTruthy(); // Falls back to unauthenticated UI
+        expect(getByText("Login")).toBeTruthy();
       });
     });
   });
