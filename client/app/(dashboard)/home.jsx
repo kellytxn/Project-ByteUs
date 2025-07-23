@@ -640,6 +640,7 @@ const Home = () => {
                           }
                           style={styles.input}
                           keyboardType="numeric"
+                          testID="mc-input"
                         />
                       ) : (
                         <Text style={styles.infoValue}>
@@ -655,6 +656,7 @@ const Home = () => {
 
                     {isEditing && (
                       <Pressable
+                        testID="save-button"
                         onPress={handleSave}
                         style={styles.saveButton}
                         android_ripple={{ color: "#9C7FC5" }}
@@ -827,6 +829,7 @@ const Home = () => {
                     )}
                   </View>
                   <Pressable
+                    testID="add-friend-button"
                     style={styles.addFriendButton}
                     onPress={() => {
                       Alert.prompt(

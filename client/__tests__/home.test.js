@@ -4,6 +4,7 @@ import Home from "../app/(dashboard)/home";
 import { NavigationContainer } from "@react-navigation/native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Alert } from "react-native";
 
 // Mock all dependencies
 jest.mock("axios");
@@ -18,6 +19,7 @@ jest.mock("expo-router", () => ({
     replace: mockReplace,
   }),
 }));
+jest.spyOn(Alert, "alert");
 
 const consoleErrorSpy = jest
   .spyOn(console, "error")
@@ -110,7 +112,7 @@ describe("home", () => {
     });
   });
 
-  describe("profile and friends info display", () => {
+  describe("profile info display", () => {
     it("displays profile information", async () => {
       const { getByText, queryByText, getByTestId, getAllByText } =
         renderComponent();
@@ -133,6 +135,44 @@ describe("home", () => {
       expect(getByText("N/A")).toBeTruthy();
     });
 
+    it("allows editing and saving profile", async () => {
+      const { getByText, getByTestId, getByDisplayValue } = renderComponent();
+
+      await waitFor(() => getByText("Welcome back,"));
+
+      fireEvent.press(getByTestId("edit-profile-button"));
+
+      const courseInput = getByDisplayValue("CS");
+      fireEvent.changeText(courseInput, "New Course");
+
+      fireEvent.press(getByTestId("save-button"));
+
+      await waitFor(() => {
+        expect(getByDisplayValue("New Course")).toBeTruthy();
+      });
+    });
+
+    it("shows alert for non-numeric MCs", async () => {
+      const { getByTestId, getByText, getByDisplayValue } = renderComponent();
+
+      await waitFor(() => getByText("Welcome back,"));
+
+      fireEvent.press(getByTestId("edit-profile-button"));
+
+      const mcInput = getByTestId("mc-input");
+      fireEvent.changeText(mcInput, "abc");
+
+      fireEvent.press(getByTestId("save-button"));
+
+      await waitFor(() => {
+        expect(Alert.alert).toHaveBeenCalledWith(
+          "Please enter a valid number for MCs to Graduate."
+        );
+      });
+    });
+  });
+
+  describe("friends info display", () => {
     it("displays friends information", async () => {
       const { getByText, getAllByText } = renderComponent();
 
