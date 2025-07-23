@@ -33,7 +33,7 @@ describe("home", () => {
     semester: 1,
     email: "kelly@example.com",
     modules: [],
-    friends: ["friend1_id"], // Simulate friend IDs
+    friends: ["friend1_id"],
   };
 
   const mockFriendsData = [
