@@ -26,7 +26,7 @@ describe('register', () => {
 
     const mockUserData = {
       body: {
-        name: 'Test',
+        name: 'Test User',
         course: 'CS',
         year: 1,
         semester: 1,
@@ -44,7 +44,7 @@ describe('register', () => {
     expect(User.findOne).toHaveBeenCalledWith({ email: 'test@test.com' });
     expect(bcrypt.hash).toHaveBeenCalledWith('pass', 10);
     expect(User.create).toHaveBeenCalledWith({
-      name: 'Test',
+      name: 'Test User',
       course: 'CS',
       year: 1,
       semester: 1,
@@ -63,7 +63,7 @@ describe('register', () => {
 
     const mockUserData = {
       body: {
-        name: 'Test',
+        name: 'Test User',
         course: 'CS',
         year: 1,
         semester: 1,
@@ -88,7 +88,7 @@ describe('register', () => {
   it('rejects missing fields', async () => {
     const mockUserData = {
       body: {
-        name: 'Test',
+        name: 'Test User',
         course: 'CS',
         year: 1,
         semester: 1,
@@ -313,4 +313,157 @@ describe('userData', () => {
             data: 'Invalid token'
         });
     });
+});
+
+describe('updateUserData', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('updates user data when token is valid', async () => {
+    const decodedToken = { email: 'test@test.com' };
+    jwt.verify.mockReturnValue(decodedToken);
+
+    const mockUser = {
+      name: 'Test User',
+      course: 'CS',
+      year: 1,
+      semester: 2,
+      email: 'test@test.com',
+      modules: [],
+      save: jest.fn().mockResolvedValue()
+    };
+    User.findOne.mockResolvedValue(mockUser);
+
+    //update user semester of study
+    const mockUserUpdate = {
+      body: {
+        token: 'valid_token',
+        name: 'Test User',
+        course: 'CS',
+        year: 2,
+        semester: 1,
+      }
+    };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn()
+    };
+    await updateUserData(mockUserUpdate, res);
+
+    expect(jwt.verify).toHaveBeenCalledWith('valid_token', 'test_secret');
+    expect(User.findOne).toHaveBeenCalledWith({ email: 'test@test.com' });
+    expect(mockUser.save).toHaveBeenCalled();
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      status: 'ok', 
+      data: {
+        name: 'Test User',
+        email: 'test@test.com',
+        course: 'CS',
+        year: 2,
+        semester: 1,
+        modules: [],
+      }
+    });
+  });
+
+  it('returns error when token is invalid', async () => {
+    jwt.verify.mockImplementation(() => {
+      const error = new Error('Invalid token');
+      error.name = 'JsonWebTokenError';
+      throw error;
+    });
+
+    const mockUserUpdate = {
+      body: {
+        token: 'invalid_token',
+        name: 'Test User',
+        course: 'CS',
+        year: 2,
+        semester: 1,
+      }
+    };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn()
+    };
+    await updateUserData(mockUserUpdate, res);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({
+      status: 'error',
+      data: 'Invalid token'
+    });
+  });
+});
+
+describe('uploadProfilePic', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('updates profile picture when token is valid', async () => {
+    const decodedToken = { email: 'test@test.com' };
+    jwt.verify.mockReturnValue(decodedToken);
+
+    const mockUser = {
+      email: 'test@test.com',
+      profilePic: '',
+      save: jest.fn().mockResolvedValue()
+    }
+    User.findOne.mockResolvedValue(mockUser);
+
+    const mockUserPic = {
+      body: {
+        token: 'valid_token',
+        image: 'base64_image_string'
+      }
+    };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn()
+    };
+    await uploadProfilePic(mockUserPic, res);
+
+    expect(jwt.verify).toHaveBeenCalledWith('valid_token', 'test_secret');
+    expect(User.findOne).toHaveBeenCalledWith({ email: 'test@test.com' });
+    expect(mockUser.save).toHaveBeenCalled();
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      status: 'success',
+      message: 'Profile picture updated'
+    });
+  });
+
+  it('returns error when no image is provided', async () => {
+    const decodedToken = { email: 'test@test.com' };
+    jwt.verify.mockReturnValue(decodedToken);
+
+    const mockUser = {
+      email: 'test@test.com',
+      profilePic: '',
+      save: jest.fn().mockResolvedValue()
+    }
+    User.findOne.mockResolvedValue(mockUser);
+
+    const mockUserPic = {
+      body: {
+        token: 'valid_token'
+      }
+    };
+    const res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn()
+    };
+    await uploadProfilePic(mockUserPic, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      status: 'error',
+      message: 'Missing data'
+    });
+  });
 });
