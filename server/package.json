@@ -34,6 +34,6 @@
     "react-native-uuid": "^2.0.3"
   },
   "devDependencies": {
-    "jest": "^30.0.4"
+    "jest": "^30.0.5"
   }
 }
