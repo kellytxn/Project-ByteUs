@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node --env-file=.env index.js",
     "dev": "node --watch --trace-warFnings --env-file=.env index.js",
-    "test": "jest --watchAll"
+    "test": "jest"
   },
   "repository": {
     "type": "git",

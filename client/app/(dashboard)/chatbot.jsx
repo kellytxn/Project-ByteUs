@@ -263,6 +263,15 @@ const Chatbot = () => {
             </>
           }
           ListFooterComponent={isGeminiTyping ? <TypingIndicator /> : null}
+          onScrollToIndexFailed={(info) => {
+            const wait = new Promise((resolve) => setTimeout(resolve, 500));
+            wait.then(() => {
+              flatListRef.current?.scrollToIndex({
+                index: info.index,
+                animated: true,
+              });
+            });
+          }}
         />
         <View style={styles.inputContainer}>
           <TextInput
