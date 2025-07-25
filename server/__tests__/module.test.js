@@ -182,7 +182,6 @@ describe('createModule', () => {
       status: jest.fn().mockReturnThis(),
       json: jest.fn()
     };
-
     await createModule(mockReq, res);
 
     expect(res.status).toHaveBeenCalledWith(400);
