@@ -1,11 +1,9 @@
 jest.mock('jsonwebtoken');
-jest.mock('bcrypt');
 jest.mock('../models/UserDetails');
 jest.mock('../utils/nusmods');
 jest.mock('../utils/timetable');
 
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
 const User = require('../models/UserDetails');
 const nusmods = require('../utils/nusmods');
 const timetable = require('../utils/timetable');
