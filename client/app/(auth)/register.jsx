@@ -2,35 +2,23 @@ import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
+  ScrollView,
+  TextInput,
   Pressable,
   View,
-  ScrollView,
-  Alert,
   TouchableWithoutFeedback,
   Keyboard,
   Platform,
+  Alert,
 } from "react-native";
-import { useRouter, Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
+import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { BACKEND_URL } from "../../config";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { Dropdown } from "react-native-element-dropdown";
 
-import FormInput from "../../components/auth/formInput";
-import DropdownInput from "../../components/auth/dropDownInput";
-import ErrorMessage from "../../components/auth/errorMessage";
-import { validateEmail } from "../../utils/validation";
-import { registerUser, loginUser } from "../../services/authService";
-
-const yearOptions = [...Array(6)].map((_, i) => ({
-  label: `Year ${i + 1}`,
-  value: (i + 1).toString(),
-}));
-
-const semesterOptions = [
-  { label: "Semester 1", value: "1" },
-  { label: "Semester 2", value: "2" },
-];
-
-const RegisterScreen = () => {
+const Register = () => {
   const [fullName, setFullName] = useState("");
   const [course, setCourse] = useState("");
   const [year, setYear] = useState("");
@@ -41,6 +29,25 @@ const RegisterScreen = () => {
 
   const router = useRouter();
 
+  const yearOptions = [
+    { label: "First year", value: "1" },
+    { label: "Second year", value: "2" },
+    { label: "Third year", value: "3" },
+    { label: "Fourth year", value: "4" },
+    { label: "Fifth year", value: "5" },
+    { label: "Sixth year", value: "6" },
+  ];
+
+  const semesterOptions = [
+    { label: "First semester", value: "1" },
+    { label: "Second semester", value: "2" },
+  ];
+
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(String(email).toLowerCase());
+  };
+
   const handleRegister = async () => {
     setError(null);
 
@@ -50,27 +57,39 @@ const RegisterScreen = () => {
     }
 
     if (!validateEmail(email)) {
-      Alert.alert("Invalid email address");
+      Alert.alert("Please enter a valid email address");
       return;
     }
 
     if (password.length < 8) {
-      Alert.alert("Password must be at least 8 characters");
+      Alert.alert("Password must be at least 8 characters long");
       return;
     }
 
-    try {
-      const registerData = await registerUser(userData);
+    const userData = {
+      name: fullName,
+      course: course,
+      year: year,
+      semester: semester,
+      email: email,
+      password: password,
+    };
 
-      if (registerData.status !== "ok") {
-        setError(registerData.data || "Registration failed");
+    try {
+      const registerRes = await axios.post(`${BACKEND_URL}/register`, userData);
+
+      if (registerRes.data.status !== "ok") {
+        setError(registerRes.data.data || "Registration failed");
         return;
       }
 
-      const loginData = await loginUser({ email, password });
+      const loginRes = await axios.post(`${BACKEND_URL}/login`, {
+        email,
+        password,
+      });
 
-      if (loginData.status === "ok") {
-        const token = loginData.data;
+      if (loginRes.data.status === "ok") {
+        const token = loginRes.data.data;
         await AsyncStorage.setItem("token", token);
         router.replace("/home");
       } else {
@@ -97,44 +116,71 @@ const RegisterScreen = () => {
       <ScrollView style={styles.container}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.content}>
-            <FormInput
-              label="Full Name"
+            <Text style={styles.label}>Full Name</Text>
+            <TextInput
+              style={styles.input}
               value={fullName}
               onChangeText={setFullName}
               placeholder="Enter your full name"
+              placeholderTextColor="#999"
             />
-            <FormInput
-              label="Course"
+
+            <Text style={styles.label}>Course</Text>
+            <TextInput
+              style={styles.input}
               value={course}
               onChangeText={setCourse}
               placeholder="Enter your course"
+              placeholderTextColor="#999"
             />
-            <DropdownInput
-              label="Year"
-              value={year}
-              onChange={setYear}
+
+            <Text style={styles.label}>Year</Text>
+            <Dropdown
+              style={styles.dropdown}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+              inputSearchStyle={styles.inputSearchStyle}
               data={yearOptions}
+              maxHeight={300}
+              labelField="label"
+              valueField="value"
               placeholder="Select year"
+              value={year}
+              onChange={(item) => setYear(item.value)}
             />
-            <DropdownInput
-              label="Semester"
-              value={semester}
-              onChange={setSemester}
+
+            <Text style={styles.label}>Semester</Text>
+            <Dropdown
+              style={styles.dropdown}
+              placeholderStyle={styles.placeholderStyle}
+              selectedTextStyle={styles.selectedTextStyle}
+              inputSearchStyle={styles.inputSearchStyle}
               data={semesterOptions}
+              maxHeight={300}
+              labelField="label"
+              valueField="value"
               placeholder="Select semester"
+              value={semester}
+              onChange={(item) => setSemester(item.value)}
             />
-            <FormInput
-              label="Email"
+
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={styles.input}
               value={email}
               onChangeText={setEmail}
               placeholder="Enter your email"
+              placeholderTextColor="#999"
             />
-            <FormInput
-              label="Password"
+
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
               value={password}
               onChangeText={setPassword}
               placeholder="Enter a password"
-              secureTextEntry
+              placeholderTextColor="#999"
             />
 
             <Pressable
@@ -154,8 +200,7 @@ const RegisterScreen = () => {
                 </Text>
               </Pressable>
             </Link>
-
-            <ErrorMessage message={error} />
+            {error && <Text style={styles.error}>{error}</Text>}
           </View>
         </TouchableWithoutFeedback>
       </ScrollView>
@@ -163,7 +208,7 @@ const RegisterScreen = () => {
   );
 };
 
-export default RegisterScreen;
+export default Register;
 
 const styles = StyleSheet.create({
   container: {
@@ -176,6 +221,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingVertical: 40,
+  },
+  label: {
+    alignSelf: "flex-start",
+    marginLeft: 10,
+    marginBottom: 6,
+    color: "#999",
+    fontWeight: "600",
+  },
+  input: {
+    width: "100%",
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 20,
+    fontSize: 16,
+    borderColor: "#ccc",
+    borderWidth: 1,
   },
   button: {
     backgroundColor: "#DFB6CF",
@@ -199,5 +261,35 @@ const styles = StyleSheet.create({
     color: "#888",
     fontSize: 13,
     textDecorationLine: "underline",
+  },
+  error: {
+    color: "#B00020",
+    backgroundColor: "#FDECEA",
+    borderColor: "#F5C6CB",
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 15,
+    fontSize: 14,
+    textAlign: "center",
+    width: "100%",
+  },
+  dropdown: {
+    height: 50,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    marginBottom: 20,
+    backgroundColor: "#fff",
+    width: "100%",
+  },
+  placeholderStyle: {
+    fontSize: 16,
+    color: "#999",
+  },
+  selectedTextStyle: {
+    fontSize: 16,
+    color: "#444",
   },
 });
