@@ -62,9 +62,9 @@ export default function DashboardLayout() {
         options={{
           title: "Chatbot",
           tabBarIcon: ({ focused }) => (
-            <FontAwesome5
+            <Ionicons
+              name="logo-android"
               size={24}
-              name="robot"
               color={focused ? "#DFB6CF" : "#FFF"}
             />
           ),

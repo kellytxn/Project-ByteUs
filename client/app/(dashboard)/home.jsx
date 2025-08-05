@@ -50,11 +50,20 @@ const Home = () => {
   const router = useRouter();
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    let interval;
+
+    if (currentTab === "friends") {
+      interval = setInterval(() => {
+        fetchAll();
+      }, 5000);
+
       fetchAll();
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [currentTab]);
 
   const fetchAll = async () => {
     const freshUserData = await refetch();
@@ -398,6 +407,11 @@ const Home = () => {
 
     if (!name || !course || !year || !semester) {
       Alert.alert("Please fill in all fields before saving.");
+      return;
+    }
+
+    if (semester != "1" && semester != "2") {
+      Alert.alert("Please enter a valid semester");
       return;
     }
 

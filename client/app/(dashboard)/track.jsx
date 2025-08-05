@@ -13,6 +13,7 @@ import {
   Switch,
   ActivityIndicator,
   Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
@@ -487,6 +488,23 @@ const Track = () => {
     ],
   };
 
+  // Calculating cgpa
+  const calculateCumulativeGPA = (semesters) => {
+    let totalPoints = 0;
+    let totalUnits = 0;
+
+    semesters.forEach((sem) => {
+      totalPoints += sem.gpa * sem.totalUnits;
+      totalUnits += sem.totalUnits;
+    });
+
+    return totalUnits > 0
+      ? parseFloat((totalPoints / totalUnits).toFixed(2))
+      : 0;
+  };
+
+  const cumulativeGPA = calculateCumulativeGPA(semData);
+
   // Toggles the expanded/collapsed state of a category section
   const toggleCategory = (category) => {
     setExpandedCategories((prev) => ({
@@ -507,6 +525,9 @@ const Track = () => {
     title,
     data: data.sort((a, b) => a.completed - b.completed),
   }));
+
+  // Getting number of unique categories
+  const categoryCount = new Set(module.map((mod) => mod.category)).size;
 
   // Finding out how much of each category is completed
   const getCategoryStats = () => {
@@ -977,7 +998,7 @@ const Track = () => {
                 {semData.length > 0 && (
                   <View style={styles.progressionBox}>
                     <Text style={[styles.header, { marginTop: 0 }]}>
-                      GPA Progression
+                      GPA Progression (CGPA: {cumulativeGPA.toFixed(2)} / 5.00)
                     </Text>
 
                     {semData.length === 1 && (
@@ -1043,139 +1064,155 @@ const Track = () => {
                 )}
 
                 {module.length > 0 && (
-                  <View style={[styles.gpaBox]}>
-                    <Text style={[styles.header, { marginTop: 0 }]}>
-                      GPA Calculator
-                    </Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Search by module code or name"
-                      value={searchText}
-                      onChangeText={setSearchText}
-                    />
+                  <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    style={styles.gpaBox}
+                  >
+                    <ScrollView
+                      contentContainerStyle={{ paddingBottom: 20 }}
+                      keyboardShouldPersistTaps="handled"
+                    >
+                      <Text style={[styles.header, { marginTop: 0 }]}>
+                        GPA Calculator
+                      </Text>
 
-                    {searchText.trim() !== "" && filteredModules.length > 0 ? (
-                      <ScrollView
-                        style={{
-                          maxHeight: 150,
-                          marginTop: 0,
+                      <TextInput
+                        style={styles.input}
+                        placeholder="Search by module code or name"
+                        value={searchText}
+                        onChangeText={setSearchText}
+                        onFocus={() => {
+                          scrollViewRef.current?.scrollTo({
+                            y: categoryCount * 110 + 475,
+                            animated: true,
+                          });
                         }}
-                      >
-                        {filteredModules.length > 0 &&
-                          filteredModules.map((mod) => {
-                            const selected = selectedModules.some(
-                              (m) => m._id === mod._id
-                            );
-                            return (
-                              <Pressable
-                                key={mod._id}
-                                onPress={() => toggleModuleSelection(mod)}
-                                style={{
-                                  marginVertical: 6,
-                                  padding: 12,
-                                  backgroundColor: "white",
-                                  borderRadius: 12,
-                                  borderWidth: 1,
-                                  borderColor: "#e0e0e0",
-                                  shadowColor: "#000",
-                                  shadowOffset: { width: 0, height: 1 },
-                                  shadowOpacity: 0.1,
-                                  shadowRadius: 3,
-                                  elevation: 2,
-                                }}
-                              >
-                                <Text
-                                  numberOfLines={1}
-                                  ellipsizeMode="tail"
-                                  style={{ fontWeight: "bold" }}
-                                >
-                                  {mod.code} - {mod.name}
-                                </Text>
-                                <Text>
-                                  Grade: {mod.grade} | MCs: {mod.units}
-                                </Text>
-                              </Pressable>
-                            );
-                          })}
-                      </ScrollView>
-                    ) : null}
+                      />
 
-                    {selectedModules.length > 0 && (
-                      <>
-                        <Text style={[styles.header, { marginTop: 5 }]}>
-                          Selected:
-                        </Text>
-                        <View
+                      {searchText.trim() !== "" &&
+                      filteredModules.length > 0 ? (
+                        <ScrollView
                           style={{
-                            borderWidth: 1,
-                            borderColor: "#C9BDD6",
-                            borderRadius: 12,
-                            backgroundColor: "#C9BDD6",
-                            marginTop: 5,
-                            paddingVertical: 5,
+                            maxHeight: 150,
+                            marginTop: 0,
                           }}
                         >
-                          {selectedModules.map((mod) => (
-                            <View
-                              key={mod._id}
-                              style={{
-                                padding: 10,
-                                backgroundColor: "rgba(178, 203, 219, 0.6)",
-                                flexDirection: "row",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                borderRadius: 8,
-                                marginBottom: 5,
-                              }}
-                            >
-                              <View style={{ flex: 1 }}>
-                                <Text
-                                  numberOfLines={1}
-                                  ellipsizeMode="tail"
-                                  style={{ fontWeight: "bold" }}
-                                >
-                                  {mod.code} - {mod.name}
-                                </Text>
-                                <Text>
-                                  Grade: {mod.grade} | MCs: {mod.units}
-                                </Text>
-                              </View>
-                              <Pressable
-                                onPress={() => removeSelectedModule(mod._id)}
-                                style={({ pressed }) => [
-                                  {
-                                    backgroundColor: "#D4D5D8",
-                                    paddingVertical: 3,
-                                    paddingHorizontal: 12,
-                                    borderRadius: 8,
-                                    marginLeft: 10,
-                                  },
-                                  pressed && { opacity: 0.8 },
-                                ]}
-                              >
-                                <Text
+                          {filteredModules.length > 0 &&
+                            filteredModules.map((mod) => {
+                              const selected = selectedModules.some(
+                                (m) => m._id === mod._id
+                              );
+                              return (
+                                <Pressable
+                                  key={mod._id}
+                                  onPress={() => toggleModuleSelection(mod)}
                                   style={{
-                                    color: "#D32F2F",
-                                    fontWeight: "bold",
+                                    marginVertical: 6,
+                                    padding: 12,
+                                    backgroundColor: "white",
+                                    borderRadius: 12,
+                                    borderWidth: 1,
+                                    borderColor: "#e0e0e0",
+                                    shadowColor: "#000",
+                                    shadowOffset: { width: 0, height: 1 },
+                                    shadowOpacity: 0.1,
+                                    shadowRadius: 3,
+                                    elevation: 2,
                                   }}
                                 >
-                                  Remove
-                                </Text>
-                              </Pressable>
-                            </View>
-                          ))}
-                        </View>
-                      </>
-                    )}
+                                  <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={{ fontWeight: "bold" }}
+                                  >
+                                    {mod.code} - {mod.name}
+                                  </Text>
+                                  <Text>
+                                    Grade: {mod.grade} | MCs: {mod.units}
+                                  </Text>
+                                </Pressable>
+                              );
+                            })}
+                        </ScrollView>
+                      ) : null}
 
-                    <View style={{ marginTop: 10, alignItems: "center" }}>
                       {selectedModules.length > 0 && (
-                        <Text style={{ fontWeight: "bold", fontSize: 16 }}>
-                          GPA: {calculateGPA()}
-                        </Text>
+                        <>
+                          <Text style={[styles.header, { marginTop: 5 }]}>
+                            Selected:
+                          </Text>
+                          <View
+                            style={{
+                              borderWidth: 1,
+                              borderColor: "#C9BDD6",
+                              borderRadius: 12,
+                              backgroundColor: "#C9BDD6",
+                              marginTop: 5,
+                              paddingVertical: 5,
+                            }}
+                          >
+                            {selectedModules.map((mod) => (
+                              <View
+                                key={mod._id}
+                                style={{
+                                  padding: 10,
+                                  backgroundColor: "rgba(178, 203, 219, 0.6)",
+                                  flexDirection: "row",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  borderRadius: 8,
+                                  marginBottom: 5,
+                                }}
+                              >
+                                <View style={{ flex: 1 }}>
+                                  <Text
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                    style={{ fontWeight: "bold" }}
+                                  >
+                                    {mod.code} - {mod.name}
+                                  </Text>
+                                  <Text>
+                                    Grade: {mod.grade} | MCs: {mod.units}
+                                  </Text>
+                                </View>
+                                <Pressable
+                                  onPress={() => removeSelectedModule(mod._id)}
+                                  style={({ pressed }) => [
+                                    {
+                                      backgroundColor: "#D4D5D8",
+                                      paddingVertical: 3,
+                                      paddingHorizontal: 12,
+                                      borderRadius: 8,
+                                      marginLeft: 10,
+                                    },
+                                    pressed && { opacity: 0.8 },
+                                  ]}
+                                >
+                                  <Text
+                                    style={{
+                                      color: "#D32F2F",
+                                      fontWeight: "bold",
+                                    }}
+                                  >
+                                    Remove
+                                  </Text>
+                                </Pressable>
+                              </View>
+                            ))}
+                          </View>
+                        </>
                       )}
-                    </View>
-                  </View>
+
+                      <View style={{ marginTop: 10, alignItems: "center" }}>
+                        {selectedModules.length > 0 && (
+                          <Text style={{ fontWeight: "bold", fontSize: 16 }}>
+                            GPA: {calculateGPA()}
+                          </Text>
+                        )}
+                      </View>
+                    </ScrollView>
+                  </KeyboardAvoidingView>
                 )}
               </>
             )}
