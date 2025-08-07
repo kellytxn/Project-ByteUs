@@ -39,7 +39,7 @@ exports.timetableGen = async (req, res) => {
     if (!bestTimetable || bestScore === -Infinity) {
       return res.status(404).json({
         status: "error",
-        data: "No valid timetable found with given constraints",
+        data: "Modules have overlapping schedules",
       });
     }
 
@@ -87,6 +87,39 @@ exports.timetableSnapshot = async (req, res) => {
     return res.status(500).json({
       status: "error",
       data: "Failed to save timetable snapshot",
+    });
+  }
+};
+
+exports.timetableSave = async (req, res) => {
+  const { token, timetable } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ status: "error", data: "Token is required" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findOne({ email: decoded.email });
+
+    if (!user) {
+      return res.status(404).json({ status: "error", data: "User not found" });
+    }
+
+    user.timetableLessons = timetable;
+    await user.save();
+
+    res.status(200).json({
+      status: "success",
+      data: "Timetable saved successfully",
+    });
+  } catch (error) {
+    if (error.name === "JsonWebTokenError") {
+      return res.status(401).json({ status: "error", data: "Invalid token" });
+    }
+    return res.status(500).json({
+      status: "error",
+      data: "Failed to save timetable",
     });
   }
 };

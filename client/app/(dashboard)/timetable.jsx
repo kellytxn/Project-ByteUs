@@ -231,14 +231,54 @@ const Timetable = () => {
       setGeneratedTimetable(response.data.data);
       setTimetableView(true);
     } catch (error) {
-      console.error("Error fetching timetable:", error);
-      Alert.alert("Error", "Failed to fetch timetable data");
+      if (error.response.status === 404) {
+        Alert.alert("Scheduling conflict", "Selected modules have overlapping schedules. Please try again with different modules.");
+      } else if (error.response) {
+        Alert.alert("Server Error", `Request failed with status ${error.response.status}`);
+      } else if (error.request) {
+        Alert.alert("Network Error", "No response from server. Please check your internet connection.");
+      } else {
+        Alert.alert("Error", "Failed to fetch timetable data");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  //save to user database
+  const fetchSavedTimetable = async () => {
+    if (!userData) {
+      Alert.alert("Please wait", "User data is still loading");
+      return;
+    }
+
+    if (userData.timetableLessons.length === 0) {
+      Alert.alert(
+        "No Last Saved Timetable",
+        "Please generate a timetable instead."
+      );
+      return;
+    }
+
+    setGeneratedTimetable(userData.timetableLessons);
+    setTimetableView(true);
+  };
+
+  //save timetable lessons array to user database
+  const saveTimetableLessons = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) throw new Error("No token found");
+
+      const response = await axios.post(`${BACKEND_URL}/timetableSave`, {
+        token, 
+        timetable: generatedTimetable,
+      })
+    } catch (error) {
+      console.error("Error saving timetable:", error.response);
+    }
+  };
+
+  //save pic to user database
   const saveTimetable = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
@@ -255,11 +295,11 @@ const Timetable = () => {
       }
     } catch (error) {
       console.error("Error saving timetable:", error);
-      Alert.alert("Error", "Failed to save timetable");
+      Alert.alert("Error", "Failed to save timetable snapshot");
     }
   };
 
-  //save to user device
+  //save pic to user device
   const downloadTimetable = async () => {
     try {
       if (!timetableSnapshot.current) return;
@@ -296,7 +336,7 @@ const Timetable = () => {
     }
   };
 
-  const handlePress = () => {
+  const handleGeneratePress = () => {
     if (loading) {
       Alert.alert("Please Wait", "Timetable is being generated...");
       return;
@@ -394,7 +434,7 @@ const Timetable = () => {
 
           allClassesByType[mod.moduleCode] = classesByType;
         } catch (error) {
-          console.error("Error fetching module credits:", error);
+          console.error("Error fetching module class type:", error);
         }
       }
       setAllClassByType(allClassesByType);
@@ -726,12 +766,12 @@ const Timetable = () => {
   };
 
   const timetableViewer = () => {
-    const { width } = Dimensions.get("window");
+    const { width, height } = Dimensions.get("window");
     const dayWidth = (width - 70) / 5;
     const timetableStart = 8; //8am
-    const timetableEnd = 17; //6pm
-    const hourHeight = 60;
+    const timetableEnd = 20; //9pm
     const totalHours = timetableEnd - timetableStart;
+    const hourHeight = (height - 290) / totalHours;
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
     return (
@@ -744,7 +784,7 @@ const Timetable = () => {
             <Icon name="arrow-left" size={20} color="#2C3E50" />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => saveTimetable() && downloadTimetable()}
+            onPress={() => saveTimetableLessons() && saveTimetable() && downloadTimetable()}
             style={styles.saveButton}
           >
             <Icon name="save" size={20} color="#000" />
@@ -1046,13 +1086,24 @@ const Timetable = () => {
               styles.generateButton,
               (selectedMods.length === 0 || loading) && styles.disabledButton,
             ]}
-            onPress={handlePress}
+            onPress={handleGeneratePress}
           >
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.generateButtonText}>Generate Timetable</Text>
+              <Text style={styles.buttonText}>Generate Timetable</Text>
             )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.savedTTButton,
+              (!userData.timetableLessons) && styles.disabledButton,
+            ]}
+            onPress={fetchSavedTimetable}
+          >
+            <Text style={styles.buttonText}>Last Saved Timetable</Text>
+
           </TouchableOpacity>
         </>
       }
@@ -1210,7 +1261,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 20,
   },
-  generateButtonText: {
+  savedTTButton: {
+    backgroundColor: "#C9BDD6",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  buttonText: {
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
@@ -1403,6 +1461,7 @@ const styles = StyleSheet.create({
   timeLabelsColumn: {
     width: 70,
     zIndex: 2,
+    paddingTop: 1,
     borderRightWidth: 1,
     borderRightColor: "#CCC",
   },
