@@ -29,11 +29,13 @@ const Timetable = () => {
   const [totalMCs, setTotalMCs] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
   const [academicYear, setAcademicYear] = useState("2025-2026"); //use ay2025-2026
-  const [userData, setUserData] = useState(null);
+  const [userData, setUserData] = useState({});
   const [userDataLoading, setUserDataLoading] = useState(true);
   const [userPassedMods, setUserPassedMods] = useState([]);
   const [generatedTimetable, setGeneratedTimetable] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [savedLoading, setSavedLoading] = useState(false);
+  const [sortLoading, setSortLoading] = useState(false);
   const [timetableView, setTimetableView] = useState(false);
   const [allClassByType, setAllClassByType] = useState({});
   const [selectedLesson, setSelectedLesson] = useState(null);
@@ -246,21 +248,68 @@ const Timetable = () => {
   };
 
   const fetchSavedTimetable = async () => {
-    if (!userData) {
-      Alert.alert("Please wait", "User data is still loading");
-      return;
-    }
+    try {
+      setSavedLoading(true);
+      if (!userData) {
+        Alert.alert("Please wait", "User data is still loading");
+        return;
+      }
 
-    if (userData.timetableLessons.length === 0) {
-      Alert.alert(
-        "No Last Saved Timetable",
-        "Please generate a timetable instead."
-      );
-      return;
-    }
+      if (!userData.timetableLessons || userData.timetableLessons.length === 0) {
+        Alert.alert(
+          "No Last Saved Timetable",
+          "Please generate a timetable instead."
+        );
+        return;
+      }
+      
+      const savedMods = userData.selectedMods || [];
+      setSelectedMods(savedMods);
 
-    setGeneratedTimetable(userData.timetableLessons);
-    setTimetableView(true);
+      if (savedMods.length > 0) {
+        let allClassesByType = {};
+        try {
+          for (const mod of savedMods) {
+            let response = await axios.get(
+              `https://api.nusmods.com/v2/${academicYear}/modules/${mod.moduleCode}.json`
+            );
+            let allSemClasses = response.data.semesterData.filter(
+              (info) => info.semester.toString() === userData.semester.toString()
+            );
+            let allClasses = allSemClasses[0].timetable;
+            let classesByType = {};
+
+            allClasses.forEach((lesson) => {
+              if (!classesByType[lesson.lessonType]) {
+                classesByType[lesson.lessonType] = [];
+              }
+              classesByType[lesson.lessonType].push({
+                moduleCode: mod.moduleCode,
+                startTime: lesson.startTime,
+                endTime: lesson.endTime,
+                weeks: lesson.weeks,
+                day: lesson.day,
+                venue: lesson.venue,
+                lessonType: lesson.lessonType,
+              });
+            });
+            allClassesByType[mod.moduleCode] = classesByType;
+          }
+          setAllClassByType(allClassesByType);
+        } catch (error) {
+          console.error("Error fetching module class type:", error);
+          Alert.alert("Error", "Failed to load lesson alternatives");
+          return;
+        }
+      }
+
+      setGeneratedTimetable(userData.timetableLessons || []);
+      setTimetableView(true);
+    } catch (error) {
+      setTimetableView(false);
+    } finally {
+      setSavedLoading(false);
+    }
   };
 
   //save timetable lessons array to user database
@@ -269,10 +318,17 @@ const Timetable = () => {
       const token = await AsyncStorage.getItem("token");
       if (!token) throw new Error("No token found");
 
-      const response = await axios.post(`${BACKEND_URL}/timetableSave`, {
+      await axios.post(`${BACKEND_URL}/timetableSave`, {
         token, 
         timetable: generatedTimetable,
-      })
+        selectedMods: selectedMods,
+      });
+
+      setUserData(prev => ({
+        ...prev,
+        timetableLessons: generatedTimetable,
+        selectedMods: selectedMods
+      }));
     } catch (error) {
       console.error("Error saving timetable:", error.response);
     }
@@ -328,8 +384,6 @@ const Timetable = () => {
       } else {
         await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
       }
-
-      Alert.alert("Success!", "Timetable saved to your Photos app.");
     } catch (error) {
       console.error("Error saving timetable to device:", error);
       Alert.alert("Error", "Failed to save timetable to device");
@@ -361,7 +415,7 @@ const Timetable = () => {
   const replaceLesson = (newLesson) => {
     setGeneratedTimetable((prevTimetable) =>
       prevTimetable.map((prevLesson) =>
-        prevLesson.modCode === newLesson.modCode &&
+        prevLesson.moduleCode === newLesson.moduleCode &&
         prevLesson.lessonType === newLesson.lessonType
           ? newLesson
           : prevLesson
@@ -405,9 +459,10 @@ const Timetable = () => {
     const sortAllClassesByType = async () => {
       if (!userData) return;
 
+      setSortLoading(true);
       let allClassesByType = {};
-      for (const mod of selectedMods) {
-        try {
+      try {
+        for (const mod of selectedMods) {
           let response = await axios.get(
             `https://api.nusmods.com/v2/${academicYear}/modules/${mod.moduleCode}.json`
           );
@@ -422,7 +477,7 @@ const Timetable = () => {
               classesByType[lesson.lessonType] = [];
             }
             classesByType[lesson.lessonType].push({
-              modCode: mod.moduleCode,
+              moduleCode: mod.moduleCode,
               startTime: lesson.startTime,
               endTime: lesson.endTime,
               weeks: lesson.weeks,
@@ -431,13 +486,14 @@ const Timetable = () => {
               lessonType: lesson.lessonType,
             });
           });
-
           allClassesByType[mod.moduleCode] = classesByType;
-        } catch (error) {
-          console.error("Error fetching module class type:", error);
-        }
+        };
+        setAllClassByType(allClassesByType);
+      } catch (error) {
+        console.error("Error fetching module class type:", error);
+      } finally {
+        setSortLoading(false);
       }
-      setAllClassByType(allClassesByType);
     };
 
     if (selectedMods.length > 0) {
@@ -445,7 +501,7 @@ const Timetable = () => {
     } else {
       setAllClassByType({});
     }
-  }, [selectedMods, academicYear]);
+  }, [selectedMods, academicYear, userData]);
 
   useEffect(() => {
     const sortExams = async () => {
@@ -471,7 +527,7 @@ const Timetable = () => {
             ); //convert mins to ms
 
             allExamInfo.push({
-              modCode: mod.moduleCode,
+              moduleCode: mod.moduleCode,
               examDate: startTime.toISOString().slice(0, 10),
               startTime: startTime,
               endTime: endTime,
@@ -675,9 +731,11 @@ const Timetable = () => {
 
   const LessonSelectionModal = () => {
     if (!selectedLesson) return;
+    console.log(selectedLesson);
+    console.log(allClassByType);
 
     const alternativeLessons =
-      allClassByType[selectedLesson.modCode][selectedLesson.lessonType];
+      allClassByType[selectedLesson.moduleCode][selectedLesson.lessonType];
 
     return (
       <Modal
@@ -692,7 +750,7 @@ const Timetable = () => {
               <Ionicons name="close" size={22} color="#AE96C7" />
             </Pressable>
             <Text style={styles.modalTitle}>
-              Select {selectedLesson.lessonType} for {selectedLesson.modCode}
+              Select {selectedLesson.lessonType} for {selectedLesson.moduleCode}
             </Text>
 
             <FlatList
@@ -716,7 +774,7 @@ const Timetable = () => {
                   return 0;
                 })}
               keyExtractor={(item, index) =>
-                `${item.modCode}-${item.lessonType}-${index}`
+                `${item.moduleCode}-${item.lessonType}-${index}`
               }
               renderItem={({ item }) => (
                 <TouchableOpacity
@@ -784,7 +842,17 @@ const Timetable = () => {
             <Icon name="arrow-left" size={20} color="#2C3E50" />
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => saveTimetableLessons() && saveTimetable() && downloadTimetable()}
+            onPress={async () => {
+              try {
+                await saveTimetableLessons();
+                await saveTimetable();
+                await downloadTimetable();
+                Alert.alert("Success", "Timetable saved locally and to server.");
+              } catch (err) {
+                console.error("Error during save process:", err);
+                Alert.alert("Error", "Failed to save timetable. Please try again.");
+              }
+            }}
             style={styles.saveButton}
           >
             <Icon name="save" size={20} color="#000" />
@@ -833,6 +901,7 @@ const Timetable = () => {
               ))}
             </View>
 
+            {}
             <View
               style={[
                 styles.dayColumns,
@@ -851,19 +920,19 @@ const Timetable = () => {
 
                     return (
                       <TouchableOpacity
-                        key={`${lesson.modCode}-${lesson.lessonType}`}
+                        key={`${lesson.moduleCode}-${lesson.lessonType}`}
                         style={[
                           styles.timetableLessonCard,
                           {
                             top,
                             height,
-                            backgroundColor: getModuleColor(lesson.modCode),
+                            backgroundColor: getModuleColor(lesson.moduleCode),
                           },
                         ]}
                         onPress={() => handleLessonPress(lesson)}
                       >
                         <Text style={styles.timetableLessonCode}>
-                          {lesson.modCode}
+                          {lesson.moduleCode}
                         </Text>
                         <Text style={styles.timetableLessonType}>
                           {lesson.lessonType}
@@ -975,7 +1044,7 @@ const Timetable = () => {
               <View style={styles.examClashAlert}>
                 {examClash.map((clash, index) => (
                   <Text key={index} style={styles.examClashAlertMessage}>
-                    {clash[0].modCode} and {clash[1].modCode} clash on{" "}
+                    {clash[0].moduleCode} and {clash[1].moduleCode} clash on{" "}
                     {clash[0].examDate} {formatExamTime(clash[0].startTime)}
                   </Text>
                 ))}
@@ -987,7 +1056,7 @@ const Timetable = () => {
                 {sameDayExam.map((exams, index) => (
                   <Text key={index} style={styles.sameDayAlertMessage}>
                     Multiple exams on {exams[0].examDate}:{" "}
-                    {exams.map((e) => e.modCode).join(", ")}
+                    {exams.map((e) => e.moduleCode).join(", ")}
                   </Text>
                 ))}
               </View>
@@ -1019,17 +1088,17 @@ const Timetable = () => {
 
                         {dayData.exams.map((exam) => (
                           <View
-                            key={`${exam.modCode}-${exam.startTime}`}
+                            key={`${exam.moduleCode}-${exam.startTime}`}
                             style={[
                               styles.examCard,
                               {
-                                backgroundColor: getModuleColor(exam.modCode),
-                                borderColor: getModuleColor(exam.modCode),
+                                backgroundColor: getModuleColor(exam.moduleCode),
+                                borderColor: getModuleColor(exam.moduleCode),
                               },
                             ]}
                           >
                             <Text style={styles.examModule}>
-                              {exam.modCode}
+                              {exam.moduleCode}
                             </Text>
                             <Text style={styles.examTime}>
                               {formatExamTime(exam.startTime)} -{" "}
@@ -1098,7 +1167,7 @@ const Timetable = () => {
           <TouchableOpacity
             style={[
               styles.savedTTButton,
-              (!userData.timetableLessons) && styles.disabledButton,
+              (!userData?.timetableLessons || userData.timetableLessons.length === 0) && styles.disabledButton,
             ]}
             onPress={fetchSavedTimetable}
           >
@@ -1113,7 +1182,7 @@ const Timetable = () => {
   return (
     <GestureHandlerRootView>
       <View style={styles.container}>
-        {userDataLoading ? (
+        {(userDataLoading || savedLoading) ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#AE96C7" />
             <Text style={{ marginTop: 10, color: "#555" }}>Loading...</Text>
@@ -1262,7 +1331,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   savedTTButton: {
-    backgroundColor: "#C9BDD6",
+    backgroundColor: "#AE96C7",
     padding: 15,
     borderRadius: 10,
     alignItems: "center",

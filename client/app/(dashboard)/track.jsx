@@ -126,7 +126,6 @@ const Track = () => {
             $id: uuid.v4(),
             _id: m._id,
           }));
-          console.log("Fetched modules:", modulesWithId);
 
           setModule(modulesWithId);
         } else {

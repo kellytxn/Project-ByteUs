@@ -24,7 +24,7 @@ const generatePopulation = (modCodes, modsData, populationSize = 100) => {
         let pickedClass = lessons[Math.floor(Math.random() * lessons.length)];
 
         timetable.push({
-          modCode: modCode,
+          moduleCode: modCode,
           startTime: pickedClass.startTime,
           endTime: pickedClass.endTime,
           weeks: pickedClass.weeks,
@@ -124,7 +124,7 @@ const mutate = (timetable, modsData, mutationRate = 0.1) => {
   for (let i = 0; i < newTimetable.length; i++) {
     if (Math.random() < mutationRate) {
       let lesson = newTimetable[i];
-      let allClasses = modsData[lesson.modCode];
+      let allClasses = modsData[lesson.moduleCode];
       if (!allClasses) continue;
 
       //group classes by lesson type (eg lect, tut, rec)
@@ -141,7 +141,7 @@ const mutate = (timetable, modsData, mutationRate = 0.1) => {
         let pickedClass = lessons[Math.floor(Math.random() * lessons.length)];
 
         newTimetable[i] = {
-          modCode: lesson.modCode,
+          moduleCode: lesson.moduleCode,
           startTime: pickedClass.startTime,
           endTime: pickedClass.endTime,
           weeks: pickedClass.weeks,
@@ -162,12 +162,12 @@ const crossover = (timetableA, timetableB) => {
 
   //use modcode and lesson type to as key to get one of each lesson (if A and B have different orders)
   timetableA.forEach((lesson) => {
-    const key = `${lesson.modCode}_${lesson.lessonType}`;
+    const key = `${lesson.moduleCode}_${lesson.lessonType}`;
     mapA.set(key, lesson);
   });
 
   timetableB.forEach((lesson) => {
-    const key = `${lesson.modCode}_${lesson.lessonType}`;
+    const key = `${lesson.moduleCode}_${lesson.lessonType}`;
     mapB.set(key, lesson);
   });
 

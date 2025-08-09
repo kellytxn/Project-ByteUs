@@ -24,6 +24,7 @@ const UserDetailsSchema = new mongoose.Schema({
   password: { type: String, required: true, select: false },
   timetable: { type: String, required: false },
   timetableLessons: { type: Array, required: false },
+  selectedMods: { type: Array, required: false },
   profilePic: { type: String, required: false },
   modules: {
     type: [ModuleSchema],

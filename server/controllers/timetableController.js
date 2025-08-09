@@ -92,7 +92,7 @@ exports.timetableSnapshot = async (req, res) => {
 };
 
 exports.timetableSave = async (req, res) => {
-  const { token, timetable } = req.body;
+  const { token, timetable, selectedMods } = req.body;
 
   if (!token) {
     return res.status(400).json({ status: "error", data: "Token is required" });
@@ -107,6 +107,7 @@ exports.timetableSave = async (req, res) => {
     }
 
     user.timetableLessons = timetable;
+    user.selectedMods = selectedMods;
     await user.save();
 
     res.status(200).json({
