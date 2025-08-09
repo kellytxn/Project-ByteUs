@@ -731,8 +731,6 @@ const Timetable = () => {
 
   const LessonSelectionModal = () => {
     if (!selectedLesson) return;
-    console.log(selectedLesson);
-    console.log(allClassByType);
 
     const alternativeLessons =
       allClassByType[selectedLesson.moduleCode][selectedLesson.lessonType];
