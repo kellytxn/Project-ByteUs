@@ -10,7 +10,8 @@ const timetable = require('../utils/timetable');
 process.env.JWT_SECRET = 'test_secret';
 const {
   timetableGen,
-  timetableSnapshot
+  timetableSnapshot,
+  timetableSave
 } = require('../controllers/timetableController');
 
 describe('timetableGen', () => {
@@ -23,7 +24,7 @@ describe('timetableGen', () => {
 
     const mockTimetable = [
         {
-            modCode: 'CS2030',
+            moduleCode: 'CS2030',
             startTime: '1100',
             endTime: '1200',
             weeks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
@@ -32,7 +33,7 @@ describe('timetableGen', () => {
             lessonType: 'Recitation',
         },
         {
-            modCode: 'BT2102',
+            moduleCode: 'BT2102',
             startTime: '0900',
             endTime: '1100',
             weeks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
@@ -97,7 +98,7 @@ describe('timetableGen', () => {
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({
         status: 'error',
-        data: 'No valid timetable found with given constraints',
+        data: 'Modules have overlapping schedules',
     });
   });
 
@@ -212,6 +213,139 @@ describe('timetableSnapshot', () => {
         json: jest.fn()
     };
     await timetableSnapshot(mockReq, res);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({
+        status: 'error',
+        data: 'Invalid token',
+    });
+  });
+});
+
+describe('timetableSave', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('saves timetable lessons successfully', async () => {
+    jwt.verify.mockReturnValue({ email: 'test@test.com' });
+    
+    const mockUser = {
+        save: jest.fn().mockResolvedValue(true)
+    };
+    User.findOne.mockResolvedValue(mockUser);
+
+    const mockTimetable = [
+        {
+            moduleCode: 'CS2030',
+            startTime: '1100',
+            endTime: '1200',
+            weeks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+            day: 'Wednesday',
+            venue: 'COM1-0207',
+            lessonType: 'Recitation',
+        },
+        {
+            moduleCode: 'BT2102',
+            startTime: '0900',
+            endTime: '1100',
+            weeks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+            day: 'Wednesday',
+            venue: 'COM1-0209',
+            lessonType: 'Tutorial',
+        }
+    ];
+    const mockSelectedMods = [
+        {
+            moduleCode: 'CS2030',
+            title: 'Programming Methodology II',
+            semesters: [1, 2]
+        },
+        {
+            moduleCode: 'BT2102',
+            title: 'Data Management and Visualisation',
+            semesters: [1, 2]
+        }
+    ];
+
+    const mockReq = {
+        body: {
+            token: 'valid_token',
+            timetable: mockTimetable,
+            selectedMods: mockSelectedMods
+        }
+    };
+    const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn()
+    };
+    await timetableSave(mockReq, res);
+
+    expect(jwt.verify).toHaveBeenCalledWith('valid_token', 'test_secret');
+    expect(User.findOne).toHaveBeenCalledWith({ email: 'test@test.com' });
+    expect(mockUser.timetableLessons).toBe(mockTimetable);
+    expect(mockUser.selectedMods).toBe(mockSelectedMods);
+    expect(mockUser.save).toHaveBeenCalled();
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+        status: 'success',
+        data: 'Timetable saved successfully',
+    });
+  });
+
+  it('returns error when token is invalid', async () => {
+    jwt.verify.mockImplementation(() => {
+      const error = new Error('Invalid token');
+      error.name = 'JsonWebTokenError';
+      throw error;
+    });
+
+    const mockTimetable = [
+        {
+            moduleCode: 'CS2030',
+            startTime: '1100',
+            endTime: '1200',
+            weeks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+            day: 'Wednesday',
+            venue: 'COM1-0207',
+            lessonType: 'Recitation',
+        },
+        {
+            moduleCode: 'BT2102',
+            startTime: '0900',
+            endTime: '1100',
+            weeks: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+            day: 'Wednesday',
+            venue: 'COM1-0209',
+            lessonType: 'Tutorial',
+        }
+    ];
+    const mockSelectedMods = [
+        {
+            moduleCode: 'CS2030',
+            title: 'Programming Methodology II',
+            semesters: [1, 2]
+        },
+        {
+            moduleCode: 'BT2102',
+            title: 'Data Management and Visualisation',
+            semesters: [1, 2]
+        }
+    ];
+
+    const mockReq = {
+        body: {
+            token: 'valid_token',
+            timetable: mockTimetable,
+            selectedMods: mockSelectedMods
+        }
+    };
+    const res = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn()
+    };
+    await timetableSave(mockReq, res);
 
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
