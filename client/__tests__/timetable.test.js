@@ -22,6 +22,36 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 }));
 
 describe("Timetable Component", () => {
+  const mockUserDataWithoutTimetable = {
+    semester: 1,
+    modules: [
+      { code: "CS1101S", completed: true, grade: "A" },
+      { code: "MA1521", completed: true, grade: "B" },
+    ],
+    timetableLessons: null, // No saved timetable
+    selectedMods: [],
+  };
+
+  const mockUserDataWithTimetable = {
+    semester: 1,
+    modules: [
+      { code: "CS1101S", completed: true, grade: "A" },
+      { code: "MA1521", completed: true, grade: "B" },
+    ],
+    timetableLessons: [
+      {
+        moduleCode: "CS2030S",
+        lessonType: "Lecture",
+        day: "Monday",
+        startTime: "1000",
+        endTime: "1200",
+        venue: "LT1",
+        weeks: [1, 2, 3, 4],
+      },
+    ],
+    selectedMods: [{ moduleCode: "CS2030S" }],
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
 
@@ -149,17 +179,13 @@ describe("Timetable Component", () => {
       <Timetable />
     );
 
-    await waitFor(
-      () => {
-        expect(queryByText("Loading...")).toBeNull();
-      },
-      { timeout: 15000 }
-    );
+    await waitFor(() => expect(queryByText("Loading...")).toBeNull(), {
+      timeout: 5000,
+    });
 
     const searchInput = getByPlaceholderText("Search module code or name");
     await act(async () => {
       fireEvent.changeText(searchInput, "CS2030S");
-      await new Promise((r) => setTimeout(r, 100));
     });
 
     const moduleItem = await findByText("CS2030S");
@@ -171,12 +197,13 @@ describe("Timetable Component", () => {
       data: {
         data: [
           {
-            modCode: "CS2030S",
+            moduleCode: "CS2030S",
             lessonType: "Lecture",
             day: "Monday",
             startTime: "1000",
             endTime: "1200",
             venue: "LT1",
+            weeks: [1, 2, 3, 4],
           },
         ],
       },
@@ -186,10 +213,14 @@ describe("Timetable Component", () => {
       fireEvent.press(getByText("Generate Timetable"));
     });
 
-    await waitFor(() => {
-      expect(getByText("Mon")).toBeTruthy();
-      expect(getByText("CS2030S")).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        expect(getByText("Mon")).toBeTruthy();
+        expect(getByText("CS2030S")).toBeTruthy();
+        expect(getByText("Lecture")).toBeTruthy();
+      },
+      { timeout: 5000 }
+    );
   });
 
   it("renders preference texts", async () => {
@@ -206,5 +237,68 @@ describe("Timetable Component", () => {
     expect(getByText("No classes on Friday")).toBeTruthy();
     expect(getByText("Prefer classes ending before 2pm")).toBeTruthy();
     expect(getByText("Prefer classes starting after 10am")).toBeTruthy();
+  });
+
+  it("should load saved timetable when available", async () => {
+    axios.post.mockReset();
+    axios.post.mockResolvedValueOnce({
+      data: {
+        data: mockUserDataWithTimetable,
+      },
+    });
+
+    axios.get.mockImplementation((url) => {
+      if (url.includes("CS2030S")) {
+        return Promise.resolve({
+          data: {
+            moduleCredit: 4,
+            semesterData: [
+              {
+                semester: 1,
+                timetable: [
+                  {
+                    lessonType: "Lecture",
+                    day: "Monday",
+                    startTime: "1000",
+                    endTime: "1200",
+                    venue: "LT1",
+                    weeks: [1, 2, 3, 4],
+                  },
+                  {
+                    lessonType: "Tutorial",
+                    day: "Wednesday",
+                    startTime: "1400",
+                    endTime: "1500",
+                    venue: "TR1",
+                    weeks: [1, 2, 3, 4],
+                  },
+                ],
+                examDate: "2025-11-25T09:00:00.000Z",
+              },
+            ],
+          },
+        });
+      }
+      return Promise.reject(new Error("Module not found"));
+    });
+
+    const { getByText, queryByText } = render(<Timetable />);
+
+    await waitFor(() => expect(queryByText("Loading...")).toBeNull(), {
+      timeout: 5000,
+    });
+
+    await act(async () => {
+      fireEvent.press(getByText("Last Saved Timetable"));
+    });
+
+    await waitFor(
+      () => {
+        expect(getByText("Mon")).toBeTruthy();
+        expect(getByText("CS2030S")).toBeTruthy();
+        expect(getByText("Lecture")).toBeTruthy();
+      },
+      { timeout: 5000 }
+    );
   });
 });
