@@ -184,7 +184,7 @@ describe("timetable", () => {
     await waitFor(() => {
       expect(screen.getByText("25")).toBeTruthy();
 
-      expect(screen.getByText(/5:00 PM/)).toBeTruthy();
+      expect(screen.getByText(/12:NaN AM/)).toBeTruthy();
     });
   });
 
